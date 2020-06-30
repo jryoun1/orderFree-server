@@ -8,7 +8,7 @@ var emailAvailable = false;
 var passwordMailSent = false;
 
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
-//그리고 user는 main에서 호출할 때 /owner로 써줬기 때문에 user.js에서는 라우딩에 /owner를 안써줘도된다.
+//그리고 owner는 main에서 호출할 때 /owner로 써줬기 때문에 owner.js에서는 라우딩에 /owner를 안써줘도된다.
 
 //mysql과의 연동 
 var connection = mysql.createConnection({
@@ -22,10 +22,10 @@ var connection = mysql.createConnection({
 //회원가입 하는 부분
 router.post('/join', function (req, res, next) {
     console.log(req.body);
-    var userEmail = req.body.userEmail;
-    var userPwd = req.body.userPwd;
-    var userName = req.body.userName;
-    var userMobilePhone = req.body.userMobilePhone;
+    var ownerEmail = req.body.ownerEmail;
+    var ownerPwd = req.body.ownerPwd;
+    var ownerName = req.body.ownerName;
+    var ownerPhoneNumber = req.body.ownerPhoneNumber;
     
     //salt 값은 현재 시간에 랜덤 값을 곱해서 생성된 문자열, db에 같이 저장
     var salt = Math.round((new Date().valueOf()*Math.random()))+"";
@@ -33,11 +33,11 @@ router.post('/join', function (req, res, next) {
     //createHash shat512 알고리즘 사용, 
     //update()는 인자로 salt를 적용하므로 평문 비밀번호에 salt값 더해서 넘겨줌
     //digest()는 인자로 인코딩 방식 hex사용 
-    var hashedPwd = crypto.createHash("sha512").update(userPwd + salt).digest("hex");
+    var hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
 
     // db에 삽입을 수행하는 sql문
-    var insert_sql = 'INSERT INTO Users (UserEmail, UserPwd, UserName, UserMobilePhone, salt) VALUES (?, ?, ?, ?, ?)';
-    var params = [userEmail, hashedPwd, userName, userMobilePhone, salt];
+    var insert_sql = 'INSERT INTO Owners (OwnerEmail, OwnerPwd, OwnerName, OwnerPhoneNumber, OwnerSalt) VALUES (?, ?, ?, ?, ?)';
+    var params = [ownerEmail, hashedPwd, ownerName, ownerPhoneNumber, salt];
 
     // insert_sql 문에서 values의 ?들은 두 번째 매개변수로 넘겨진 params의 값들로 치환된다.
     connection.query(insert_sql, params, function (err, result) {
@@ -59,13 +59,13 @@ router.post('/join', function (req, res, next) {
 
 //이메일 중복체크 하는 부분
 router.post('/join_emailAvailable', function (req, res) {
-    var userEmail = req.body.userEmail;
+    var ownerEmail = req.body.ownerEmail;
 
     //Email중복체크 수행하는 sql문
-    var email_check_sql = 'SELECT * FROM Users WHERE UserEmail = ?'
+    var email_check_sql = 'SELECT * FROM Owners WHERE OwnerEmail = ?';
 
     //Email 중복체크를 수행 
-    connection.query(email_check_sql, userEmail, function (err, data) {
+    connection.query(email_check_sql, ownerEmail, function (err, data) {
         console.log(data);
         var resultCode = 500;
         var message = '에러가 발생했습니다';
@@ -90,45 +90,45 @@ router.post('/join_emailAvailable', function (req, res) {
 
 //로그인하는 부분
 router.post('/login', function (req, res) {
-    var userEmail = req.body.userEmail;
-    var userPwd = req.body.userPwd;
-    var sql = 'select * from Users where UserEmail = ?';
+    var ownerEmail = req.body.ownerEmail;
+    var ownerPwd = req.body.ownerPwd;
+    var sql = 'select * from Owners where OwnerEmail = ?';
 
-    //sql문의 ?는 두번째 파라미터 userEmail로 치환된다.
-    connection.query(sql, userEmail, function (err, result) {
+    //sql문의 ?는 두번째 파라미터 ownerEmail로 치환된다.
+    connection.query(sql, ownerEmail, function (err, result) {
         var resultCode = 500;
         var message = '에러가 발생했습니다';
         
         if (err) {
             console.log(err);
         } else {
-            if (result.length === 0) { //userEmail와 일치하는 결과가 없을 경우
+            if (result.length === 0) { //ownerEmail와 일치하는 결과가 없을 경우
                 resultCode = 204;
                 message = '존재하지 않는 계정입니다!';
-            } else if ((crypto.createHash("sha512").update(userPwd + result[0].salt).digest("hex"))
-                !== result[0].UserPwd) { //userEmail와는 일치하지만 userPwd가 다른 경우
+            } else if ((crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex"))
+                !== result[0].OwnerPwd) { //ownerEmail와는 일치하지만 ownerPwd가 다른 경우
                 resultCode = 204;
                 message = '비밀번호가 틀렸습니다!';
-            } else { //userEmail과 userPwd가 모두 일치하는 경우
+            } else { //ownerEmail과 ownerPwd가 모두 일치하는 경우
                 resultCode = 200;
-                message = '로그인 성공! ' + result[0].UserName + '님 환영합니다!';
-                var userName = result[0].UserName;
+                message = '로그인 성공! ' + result[0].OwnerName + '님 환영합니다!';
+                var ownerName = result[0].OwnerName;
             }
         }
         res.json({
             'code': resultCode,
             'message': message,
-            'userName': userName
+            'ownerName': ownerName
         });
     })
 });
 
 //이름과 전화번호로 이메일 찾는 부분
 router.post('/find_email', function (req, res) {
-    var userName = req.body.userName;
-    var userMobilePhone = req.body.userMobilePhone;
-    var sql = 'select UserEmail from Users where UserName= ? && UserMobilePhone= ?';
-    var params = [userName, userMobilePhone];
+    var ownerName = req.body.ownerName;
+    var ownerPhoneNumber = req.body.ownerPhoneNumber;
+    var sql = 'select OwnerEmail from Owners where OwnerName= ? && OwnerPhoneNumber= ?';
+    var params = [ownerName, ownerPhoneNumber];
 
     //sql문의 ?는 두번째 파라미터 params로 치환된다.
     connection.query(sql, params, function (err, result) {
@@ -143,23 +143,23 @@ router.post('/find_email', function (req, res) {
         }else { //이름과 전화번호가 db에 존재하는 경우
             resultCode = 200;
             message = '계정을 찾았습니다!'
-            var userEmail = result[0].UserEmail;
+            var ownerEmail = result[0].OwnerEmail;
         }
         res.json({
             'code': resultCode,
             'message': message,
-            'userEmail': userEmail
+            'ownerEmail': ownerEmail
         });
     })
 });
 
 //이메일 이름 전화번호 비교후 일치하면 이메일로 비밀번호 보내주는 부분
 router.post('/find_password',function(req, res){
-    var userEmail = req.body.userEmail;
-    var userName = req.body.userName;
-    var userMobilePhone = req.body.userMobilePhone;
-    var sql = 'select UserPwd from Users Where (UserEmail = ? && UserName = ? && UserMobilePhone = ?)';
-    var params =[userEmail, userName, userMobilePhone];
+    var ownerEmail = req.body.ownerEmail;
+    var ownerName = req.body.ownerName;
+    var ownerPhoneNumber = req.body.ownerPhoneNumber;
+    var sql = 'select OwnerPwd from Owners Where (OwnerEmail = ? && OwnerName = ? && OwnerPhoneNumber = ?)';
+    var params =[ownerEmail, ownerName, ownerPhoneNumber];
 
     connection.query(sql,params,function(err,result){
         var resultCode = 500;
@@ -173,7 +173,7 @@ router.post('/find_password',function(req, res){
         }else {
             resultCode = 200;
             message ="계정이 존재합니다."
-            passwordMailSend(userEmail,result[0].UserPwd);
+            passwordMailSend(ownerEmail,result[0].OwnerPwd);
         }
         res.json({
             'code' : resultCode,
@@ -183,7 +183,7 @@ router.post('/find_password',function(req, res){
 });
 
 //메일 보내는 함수
-function passwordMailSend(useremail, userpwd){
+function passwordMailSend(ownerEmail, ownerPwd){
     // nodemailer Transport 생성
     var transporter = nodemailer.createTransport({
         service:'gmail',
@@ -197,9 +197,9 @@ function passwordMailSend(useremail, userpwd){
 
     const emailOptions = {
         from : 'jryoun0404@gmail.com', //보내는 사람
-        to : useremail, //받는 사람, 즉 비밀번호를 찾고싶어하는 가입자
+        to : ownerEmail, //받는 사람, 즉 비밀번호를 찾고싶어하는 가입자
         subject : '오더프리 계정찾기 이메일입니다.',
-        text : '해당 계정의 비밀번호는 ' + userpwd + '입니다.'
+        text : '해당 계정의 비밀번호는 ' + ownerPwd + '입니다.'
     };
 
     transporter.sendMail(emailOptions, function(err, result){
