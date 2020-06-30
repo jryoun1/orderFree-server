@@ -8,7 +8,7 @@ var emailAvailable = false;
 var passwordMailSent = false;
 
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
-//그리고 user는 main에서 /user로 써줬기 때문에 이제 안써줘도댐
+//그리고 user는 main에서 호출할 때 /user로 써줬기 때문에 user.js에서는 라우딩에 /user를 안써줘도된다.
 
 //mysql과의 연동 
 var connection = mysql.createConnection({
@@ -27,8 +27,12 @@ router.post('/join', function (req, res, next) {
     var userName = req.body.userName;
     var userMobilePhone = req.body.userMobilePhone;
     
-    //암호화를 위해서 작성했는데 아직 미완성
+    //salt 값은 현재 시간에 랜덤 값을 곱해서 생성된 문자열, db에 같이 저장
     var salt = Math.round((new Date().valueOf()*Math.random()))+"";
+    //crypto를 이용하여 비밀번호 암호화 
+    //createHash shat512 알고리즘 사용, 
+    //update()는 인자로 salt를 적용하므로 평문 비밀번호에 salt값 더해서 넘겨줌
+    //digest()는 인자로 인코딩 방식 hex사용 
     var hashedPwd = crypto.createHash("sha512").update(userPwd + salt).digest("hex");
 
     // db에 삽입을 수행하는 sql문
@@ -103,8 +107,6 @@ router.post('/login', function (req, res) {
                 message = '존재하지 않는 계정입니다!';
             } else if ((crypto.createHash("sha512").update(userPwd + result[0].salt).digest("hex"))
                 !== result[0].UserPwd) { //userEmail와는 일치하지만 userPwd가 다른 경우
-                console.log(crypto.createHash("sha512").update(userPwd + result[0].salt).digest("hex"));
-                console.log(result[0].UserPwd);
                 resultCode = 204;
                 message = '비밀번호가 틀렸습니다!';
             } else { //userEmail과 userPwd가 모두 일치하는 경우
@@ -208,7 +210,6 @@ function passwordMailSend(useremail, userpwd){
         }
     });
 }
-
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
