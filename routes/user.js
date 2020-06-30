@@ -3,7 +3,7 @@ var express = require('express');
 var router = express.Router();
 var nodemailer = require('nodemailer'); //메일 전송을 위한 모듈
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
-var db_config = require('../db-config/db-config.json'); // 
+var db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
 var emailAvailable = false;
 var passwordMailSent = false;
 
@@ -28,12 +28,12 @@ router.post('/join', function (req, res, next) {
     var userMobilePhone = req.body.userMobilePhone;
     
     //암호화를 위해서 작성했는데 아직 미완성
-    var salt = Math.round((new Date.valueOf()*Math.random()))+"";
+    var salt = Math.round((new Date().valueOf()*Math.random()))+"";
     var hashedPwd = crypto.createHash("sha512").update(userPwd + salt).digest("hex");
 
     // db에 삽입을 수행하는 sql문
     var insert_sql = 'INSERT INTO Users (UserEmail, UserPwd, UserName, UserMobilePhone, salt) VALUES (?, ?, ?, ?, ?)';
-    var params = [userEmail, userPwd, userName, userMobilePhone, salt];
+    var params = [userEmail, hashedPwd, userName, userMobilePhone, salt];
 
     // insert_sql 문에서 values의 ?들은 두 번째 매개변수로 넘겨진 params의 값들로 치환된다.
     connection.query(insert_sql, params, function (err, result) {
@@ -94,14 +94,17 @@ router.post('/login', function (req, res) {
     connection.query(sql, userEmail, function (err, result) {
         var resultCode = 500;
         var message = '에러가 발생했습니다';
-
+        
         if (err) {
             console.log(err);
         } else {
             if (result.length === 0) { //userEmail와 일치하는 결과가 없을 경우
                 resultCode = 204;
                 message = '존재하지 않는 계정입니다!';
-            } else if (userPwd !== result[0].UserPwd) { //userEmail와는 일치하지만 userPwd가 다른 경우
+            } else if ((crypto.createHash("sha512").update(userPwd + result[0].salt).digest("hex"))
+                !== result[0].UserPwd) { //userEmail와는 일치하지만 userPwd가 다른 경우
+                console.log(crypto.createHash("sha512").update(userPwd + result[0].salt).digest("hex"));
+                console.log(result[0].UserPwd);
                 resultCode = 204;
                 message = '비밀번호가 틀렸습니다!';
             } else { //userEmail과 userPwd가 모두 일치하는 경우
