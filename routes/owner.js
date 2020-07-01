@@ -4,6 +4,8 @@ var router = express.Router();
 var nodemailer = require('nodemailer'); //메일 전송을 위한 모듈
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 var db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+var moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
+require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
 var emailAvailable = false;
 var passwordMailSent = false;
 
@@ -26,6 +28,8 @@ router.post('/join', function (req, res, next) {
     var ownerPwd = req.body.ownerPwd;
     var ownerName = req.body.ownerName;
     var ownerPhoneNumber = req.body.ownerPhoneNumber;
+    moment.tz.setDefault("Asia/Seoul"); //한국시간으로 설정
+    var ownerJoinDate = moment().format("YYYY-MM-DD HH:mm:ss"); //format에 맞춰서 회원가입 할때 db에 저장 
     
     //salt 값은 현재 시간에 랜덤 값을 곱해서 생성된 문자열, db에 같이 저장
     var salt = Math.round((new Date().valueOf()*Math.random()))+"";
@@ -36,8 +40,9 @@ router.post('/join', function (req, res, next) {
     var hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
 
     // db에 삽입을 수행하는 sql문
-    var insert_sql = 'INSERT INTO Owners (OwnerEmail, OwnerPwd, OwnerName, OwnerPhoneNumber, OwnerSalt) VALUES (?, ?, ?, ?, ?)';
-    var params = [ownerEmail, hashedPwd, ownerName, ownerPhoneNumber, salt];
+    var insert_sql = 
+    'INSERT INTO Owners (OwnerEmail, OwnerPwd, OwnerName, OwnerPhoneNumber, OwnerSalt, OwnerJoinDate) VALUES (?, ?, ?, ?, ?, ?)';
+    var params = [ownerEmail, hashedPwd, ownerName, ownerPhoneNumber, salt, ownerJoinDate];
 
     // insert_sql 문에서 values의 ?들은 두 번째 매개변수로 넘겨진 params의 값들로 치환된다.
     connection.query(insert_sql, params, function (err, result) {
