@@ -149,6 +149,14 @@ router.post('/find_email', function (req, res) {
             resultCode = 200;
             message = '계정을 찾았습니다!'
             var ownerEmail = result[0].OwnerEmail;
+            var splitedEmail = ownerEmail.split('\@'); 
+            var encrpytedEmail;
+            if(splitedEmail[0].length > 2){ //이메일 @앞부분이 3글자 이상인 경우 뒷부분 2개를 **로 표시
+                encrpytedEmail = splitedEmail[0].slice(0,-2) + "*" + "*" ;
+            }else{ //이메일 @ 앞부분이 2글자 아래인 경우, 즉 2개이거나 1개인 경우는 뒷부분 1개만 *로 표시
+                encrpytedEmail = splitedEmail[0].slice(0,-1) + "*";
+            }
+            ownerEmail = encrpytedEmail + "@" + splitedEmail[1]; // @기준으로 분리했던부분 다시 연결해서 이메일 암호화
         }
         res.json({
             'code': resultCode,
