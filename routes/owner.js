@@ -260,8 +260,5 @@ router.post('/login/changepwd',function(req, res){
 });
 
 
-
-
-
 //무엇을 export할지를 결정하는것 
 module.exports = router;
