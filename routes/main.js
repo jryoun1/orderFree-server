@@ -2,6 +2,8 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const multer = require('multer');
+const path = require('path') //파일명 중복을 막기위해서 사용
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -11,6 +13,34 @@ const connection = mysql.createConnection({
     password: db_config.password,
     port: db_config.port
 });
+
+// multer 미들웨어 등록
+const upload = multer({
+    // S3에 파일 업로드 하는 방식이 2가지 1. 디스크에서 파일 업로드, 2. 파일 버퍼(메모리)를 업로드 
+    // 지금방식은 1번 방식 
+    storage: multer.diskStorage({ //저장될 경로 설정
+        destination: function(req,file,cb){
+            cb(null,'upload/');
+        },
+        filename: function(req,res,cb){ 
+            // 저장될 파일명 설정 (중복을 막기위해서 파일명에 타임스탬프 사용)
+            // 타임스탬프.확장자 형식으로 파일명 지정
+            cb(null, new Date().valueOf() + path.extname(file.originalname));
+        }
+    }),
+});
+
+//menu 등록하는 부분
+router.post('/menu/add',upload.single("img"),function(req,res){
+    //파일 객체
+    let file = req.file;
+    //파일 정보
+    let result ={
+        originalName :file.originalname,
+        size :file.size,
+    }
+    res.json(result);
+})
 
 //가게 등록하는 부분
 router.post('/info/registore',function(req,res){
@@ -42,7 +72,7 @@ router.post('/info/registore',function(req,res){
 });
 
 
-//회원탈퇴부분
+//회원 탈퇴부분
 router.post('/info/withdraw',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
