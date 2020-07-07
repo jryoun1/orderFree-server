@@ -30,7 +30,7 @@ const upload = multer({
     }),
 });
 
-//menu 등록하는 부분
+//menu 사진 올리는 부분
 router.post('/menu/add',upload.single("img"),function(req,res){
     //파일 객체
     let file = req.file;
@@ -41,6 +41,34 @@ router.post('/menu/add',upload.single("img"),function(req,res){
     }
     res.json(result);
 })
+
+//메뉴 등록하는 부분
+router.post('/menu/add',function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const menuName = req.body.menuName;
+    const category = req.body.category;
+    const price = req.body.price;
+    const info = req.body.info;
+
+    const sql = 'insert into Menus values(json_object("ownerEmail", ?, "category", ?, "menuName", ?, "price", ?, "info", ? ))';
+    const params = [ownerEmail,category,menuName,price,info];
+
+    connection.query(sql, params, function(err, result){
+        let resultCode = 500;
+        let message = "Server Error";
+        if(err){
+            console.log(err);
+        }else{
+            resultCode = 201;
+            message = "Menu Registered";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
 
 //가게 등록하는 부분
 router.post('/info/registore',function(req,res){
