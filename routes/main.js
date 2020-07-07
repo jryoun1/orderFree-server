@@ -80,26 +80,25 @@ router.post('menu/align',function(req,res){
     connection.query(sql, params, function(err, result){
         let resultCode = 500;
         let message = "Server Error";
-        let results = []; //쿼리 검색 결과를 담기위한 배열 선언
+        var resultArray = new Array(); 
+        
         if(err){
             console.log(err);
-        }else if(result.length == 0){
-            results = null;
+        }else if(result.length === 0){
             resultCode = 400;
             message = "No Menu Exist"
         }else{
-            //이메일하고 카테고리를 통해서 메뉴이름과 카테고리 번호가져와서 results 배열에 담기
-            for(var i =0; i < result.length; i++){ 
-                results.push({
-                    'menuName' : result[i].menuName,
-                    'category' : result[i].category
-                });
+            var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
+            for(var i = 0; i < result.length; i++){
+                resultJson.menuName = result[i].menuName;
+                resultJson.category = result[i].category;
+                resultArray.push(resultJson);
             }
             resultCode = 201;
             message = "Menu Aligned";
         }
         res.json({
-            result,
+            resultArray,
             'code' : resultCode,
             'message' : message
         });
