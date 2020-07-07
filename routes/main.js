@@ -69,6 +69,44 @@ router.post('/menu/add',function(req,res){
     });
 });
 
+//메뉴 정렬해서 보기
+router.post('menu/align',function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const category = req.body.category;
+    const sql = 
+    'select json_extract(Menu,\'$."menuName"\'), json_extract(Menu, \'$."category"\') from Menus where json_extract(Menu,\'$."ownerEmail"\') = ? && json_extract(Menu,\'$."category"\') = ?';
+    const params = [ownerEmail,category];
+
+    connection.query(sql, params, function(err, result){
+        let resultCode = 500;
+        let message = "Server Error";
+        let results = []; //쿼리 검색 결과를 담기위한 배열 선언
+        if(err){
+            console.log(err);
+        }else if(result.length == 0){
+            results = null;
+            resultCode = 400;
+            message = "No Menu Exist"
+        }else{
+            //이메일하고 카테고리를 통해서 메뉴이름과 카테고리 번호가져와서 results 배열에 담기
+            for(var i =0; i < result.length; i++){ 
+                results.push({
+                    'menuName' : result[i].menuName,
+                    'category' : result[i].category
+                });
+            }
+            resultCode = 201;
+            message = "Menu Aligned";
+        }
+        res.json({
+            result,
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+
 
 //가게 등록하는 부분
 router.post('/info/registore',function(req,res){
@@ -116,7 +154,7 @@ router.post('/info/withdraw',function(req,res){
         if(err){
             console.log(err);
         }else{
-            resultCode = 201;
+            resultCode = 200;
             message = 'Account Deleted';    
         }
         res.json({
