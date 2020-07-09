@@ -49,6 +49,7 @@ router.post('/menu/add',function(req,res){
     const category = req.body.category;
     const price = req.body.price;
     const info = req.body.info;
+    
 
     const sql = 'insert into Menus values(json_object("ownerEmail", ?, "category", ?, "menuName", ?, "price", ?, "info", ? ))';
     const params = [ownerEmail,category,menuName,price,info];
@@ -99,6 +100,31 @@ router.post('menu/align',function(req,res){
         }
         res.json({
             resultArray,
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+//등록된 메뉴 삭제하는 부분 (점주 이메일하고 메뉴이름 받아서 해당 메뉴 삭제)
+router.post('menu/delete',function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const menuName = req.body.menuName;
+    const sql = 
+    'delete from Menus where (json_exxtract(Menu,\'$."ownerEmail"\') = ? and json_extract(Menu,\'$."menuName"\')=?)'; 
+    const params = [ownerEmail,menuName];
+
+    connection.query(sql, params, function(err, result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else{
+            resultCode = 200;
+            message = "Menu Deleted";
+        }
+        res.json({
             'code' : resultCode,
             'message' : message
         });
