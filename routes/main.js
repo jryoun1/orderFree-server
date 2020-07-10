@@ -42,32 +42,51 @@ router.post('/menu/add',upload.single("img"),function(req,res){
     res.json(result);
 })
 
-//메뉴 등록하는 부분
+//메뉴 등록 및 수정하는 부분 
 router.post('/menu/add',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const menuName = req.body.menuName;
     const category = req.body.category;
     const price = req.body.price;
     const info = req.body.info;
+    const decisionNum = req.body.decisionNum;
     
+    if(decisionNum === 1){ //항목추가로 메뉴를 생성하는 경우 
+        const sql = 'insert into Menus values(json_object("ownerEmail", ?, "category", ?, "menuName", ?, "price", ?, "info", ? ))';
+        const params = [ownerEmail,category,menuName,price,info];
 
-    const sql = 'insert into Menus values(json_object("ownerEmail", ?, "category", ?, "menuName", ?, "price", ?, "info", ? ))';
-    const params = [ownerEmail,category,menuName,price,info];
-
-    connection.query(sql, params, function(err, result){
-        let resultCode = 500;
-        let message = "Server Error";
-        if(err){
-            console.log(err);
-        }else{
-            resultCode = 201;
-            message = "Menu Registered";
-        }
-        res.json({
-            'code' : resultCode,
-            'message' : message
+        connection.query(sql, params, function(err, result){
+            let resultCode = 500;
+            let message = "Server Error";
+            if(err){
+                console.log(err);
+            }else{
+                resultCode = 201;
+                message = "Menu Registered";
+            }
         });
+    }else if(decisionNum === 2){ //생성된 메뉴 클릭하여 수정하는 경우 
+        const menuOriginalName = req.body.menuOriginalName;
+        const sql = 
+        'update Menus set Menu = json_set(Menu,\'$."menuName"\', ?), Menu = json_set(Menu,\'$."category"\',?),Menu = json_set(Menu,\'$."price"\',?), Menu = json_set(Menu,\'$."info"\',?) where (json_extract(Menu,\'$."ownerEmail"\') = ? )and json_extract(Menu,\'$."menuName"\') =?';
+        const params = [menuName,category,price,info,ownerEmail,menuOriginalName];
+
+        connection.query(sql, params, function(err, result){
+            let resultCode = 500;
+            let message = "Server Error";
+            if(err){
+                console.log(err);
+            }else{
+                resultCode = 200;
+                message = "Menu Modified";
+            }
+        });
+    }
+    res.json({
+        'code' : resultCode,
+        'message' : message
     });
+    
 });
 
 //메뉴 정렬해서 보기
