@@ -181,6 +181,36 @@ router.post('/info/registore',function(req,res){
     });
 });
 
+//내 정보 수정에서 비밀번호 변경 - 1 (현재 비밀번호를 제대로 입력했는지 확인)
+router.post('/info/checkpwd', function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const ownerPwd = req.body.ownerPwd;
+    const hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
+    const sql = 'select OwnerPwd from Owners where OwnerEmail = ?';
+
+    connection.query(sql, ownerEmail,function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = 'Invalid Email';    
+        }else if(result[0].OwnerPwd !== hashedPwd){
+            resultCode = 400;
+            message = 'Wrong Password'
+        }else if(result[0].OwnerPwd === hashedPwd){
+            resultCode = 200;
+            message = 'Right Password'
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
 
 //회원 탈퇴부분
 router.post('/info/withdraw',function(req,res){
