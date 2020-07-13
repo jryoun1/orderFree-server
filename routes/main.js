@@ -96,11 +96,11 @@ router.post('menu/align',function(req,res){
     const sql = 
     'select json_extract(Menu,\'$."menuName"\'), json_extract(Menu, \'$."category"\') from Menus where json_extract(Menu,\'$."ownerEmail"\') = ? && json_extract(Menu,\'$."category"\') = ?';
     const params = [ownerEmail,category];
+    var resultArray = new Array(); 
 
     connection.query(sql, params, function(err, result){
         let resultCode = 500;
         let message = "Server Error";
-        var resultArray = new Array(); 
         
         if(err){
             console.log(err);
@@ -261,6 +261,63 @@ router.post('/info/withdraw',function(req,res){
         });
     });
 });
+
+//판매 현황 확인 하는 부분
+router.post('/sellstatus',function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const startDate = req.body.startDate;
+    const endDate = req.body.endDatae;
+    const sql = 
+    'select OrderedDate ,json_extract(ShopingList,\'$."menu"\'), json_extract(ShopingList,\'$."count"\'), json_extract(ShopingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) order by OrderedDate';
+    const params = [ ownerEmail, startDate, endDate];
+    var resultArray = new Array(); 
+
+    connection.query(sql,params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "No Record Exists During Term";
+        }else{
+            var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
+            for(var i = 0; i < result.length; i++){
+                resultJson.orderedDate = result[i].OrderedDate;
+                resultJson.menu = result[i].menu;
+                resultJson.count = result[i].count;
+                resultJson.price = result[i].price;
+                resultArray.push(resultJson);
+            }
+            resultCode = 201;
+            message = "Send Sell Status";
+        }
+    });
+    //비동기 구문 필요 !!!
+    const accountSQL = 
+    'select count(*) as totalCount,sum(json_extract(ShopingList,\'$."price"\')) as TotalSum from Orders where (OwnerEmail =?) and (OrderedDate between date(?) and date(?)+1) order by OrderedDate;'
+    connection.query(accountSQL, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        
+        if(err){
+            console.log(err);
+        }else {
+            resultCode = 200;
+            message = "Send Total Count, Sum"
+        }
+    });
+        res.json({
+            resultArray,
+            'totalCount' : totalCount,
+            'totalSum' : totalSum,
+            'code' : resultCode,
+            'message' : message
+        });
+});
+
+
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
