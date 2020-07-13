@@ -42,7 +42,7 @@ router.post('/menu/add',upload.single("img"),function(req,res){
     res.json(result);
 })
 
-//메뉴 등록 및 수정하는 부분 
+//메뉴 등록 및 수정하는 부분 (메뉴 등록 버튼 누를 때)
 router.post('/menu/add',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const menuName = req.body.menuName;
@@ -89,7 +89,7 @@ router.post('/menu/add',function(req,res){
     
 });
 
-//메뉴 정렬해서 보기
+//메뉴 정렬해서 보기 (분류별 정렬을 고르고 적용버튼 클릭시)
 router.post('menu/align',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const category = req.body.category;
@@ -106,7 +106,7 @@ router.post('menu/align',function(req,res){
             console.log(err);
         }else if(result.length === 0){
             resultCode = 400;
-            message = "No Menu Exist"
+            message = "No Menu Exist";
         }else{
             var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
             for(var i = 0; i < result.length; i++){
@@ -125,7 +125,7 @@ router.post('menu/align',function(req,res){
     });
 });
 
-//등록된 메뉴 삭제하는 부분 (점주 이메일하고 메뉴이름 받아서 해당 메뉴 삭제)
+//등록된 메뉴 삭제하는 부분 (항목 삭제를 클릭 시)
 router.post('menu/delete',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const menuName = req.body.menuName;
@@ -151,8 +151,7 @@ router.post('menu/delete',function(req,res){
 });
 
 
-
-//가게 등록하는 부분
+//개인 정보 수정에서 가게 등록하는 부분 
 router.post('/info/registore',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerStoreName = req.body.ownerStoreName;
@@ -181,7 +180,33 @@ router.post('/info/registore',function(req,res){
     });
 });
 
-//내 정보 수정에서 비밀번호 변경 - 1 (현재 비밀번호를 제대로 입력했는지 확인)
+//메인화면에서 개인정보 수정 버튼 클릭시
+router.post('/info',function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const sql = 'select OwnerName, OwnerStoreAddress from Owners where OwnerEmail = ?';
+    
+    connection.query(sql, ownerEmail, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        if(err){
+            console.log(err);
+        }else if(result.length !== 0){
+            resultCode = 200;
+            message = "Load Success";
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "Invalid Email";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message,
+            'ownerName' : result[0].OwnerName,
+            'ownerStoreAddress' : result[0].OwnerStoreAddress
+        });
+    });
+});
+
+//내 정보 수정에서 비밀번호 변경 (현재 비밀번호 입력 후 변경 버튼 클릭 시)
 router.post('/info/checkpwd', function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerPwd = req.body.ownerPwd;
@@ -199,10 +224,10 @@ router.post('/info/checkpwd', function(req,res){
             message = 'Invalid Email';    
         }else if(result[0].OwnerPwd !== hashedPwd){
             resultCode = 400;
-            message = 'Wrong Password'
+            message = 'Wrong Password';
         }else if(result[0].OwnerPwd === hashedPwd){
             resultCode = 200;
-            message = 'Right Password'
+            message = 'Right Password';
         }
         res.json({
             'code' : resultCode,
@@ -211,8 +236,7 @@ router.post('/info/checkpwd', function(req,res){
     });
 });
 
-
-//회원 탈퇴부분
+//개인 정보 수정에서 회원 탈퇴 부분 (계정삭제하기 버튼 클릭시)
 router.post('/info/withdraw',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
