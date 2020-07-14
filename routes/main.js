@@ -2,8 +2,10 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const gcm = require('node-gcm'); //서버에서 안드로이드로 푸시를 하기 위해서 
 const multer = require('multer');
-const path = require('path') //파일명 중복을 막기위해서 사용
+const path = require('path'); //파일명 중복을 막기위해서 사용
+const { send } = require('process');
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -293,6 +295,11 @@ router.post('/sellstatus',function(req,res){
             resultCode = 200;
             message = "Send Sell Status";
         }
+        res.json({
+            resultArray,
+            'code' : resultCode,
+            'message' : message
+        });
     });
     //비동기 구문 필요 !!! or 안드로이드 쪽에서 계산하는게 나을것 같음
     /*
@@ -310,16 +317,41 @@ router.post('/sellstatus',function(req,res){
         }
     });
     */
-        res.json({
-            resultArray,
-           // 'totalCount' : totalCount,
-           // 'totalSum' : totalSum,
-            'code' : resultCode,
-            'message' : message
-        });
 });
 
+//주문 목록확인에서 음식 준비 완료 눌렀을 때 
+router.post('/orderlist/complete', function(req,res){
+    const ownerEmail = req.body.ownerEmail;
+    const userNum = req.body.userNum;
+    const orderNum = req.body.orderNum;
+    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
+    const params = [orderNum, userNum, ownerEmail];
 
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else if(result.length===0){
+            resultCode = 400;
+            message = "No matching Order";
+        }else{
+            resultCode = 200;
+            message = "Message Send"
+            sendPushAlarm();
+        }
+
+        res.json({
+
+        });
+    });
+});
+function sendPushAlarm(){
+    var message = new gcm.Message({
+        
+    })
+}
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
