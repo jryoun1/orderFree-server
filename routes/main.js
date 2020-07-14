@@ -268,7 +268,7 @@ router.post('/sellstatus',function(req,res){
     const startDate = req.body.startDate;
     const endDate = req.body.endDatae;
     const sql = 
-    'select OrderedDate ,json_extract(ShopingList,\'$."menu"\'), json_extract(ShopingList,\'$."count"\'), json_extract(ShopingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) order by OrderedDate';
+    'select OrderedDate ,json_extract(ShopingList,\'$."menu"\'), json_extract(ShopingList,\'$."count"\'), json_extract(ShopingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) and IsCompleted = true order by OrderedDate';
     const params = [ ownerEmail, startDate, endDate];
     var resultArray = new Array(); 
 
@@ -290,11 +290,12 @@ router.post('/sellstatus',function(req,res){
                 resultJson.price = result[i].price;
                 resultArray.push(resultJson);
             }
-            resultCode = 201;
+            resultCode = 200;
             message = "Send Sell Status";
         }
     });
-    //비동기 구문 필요 !!!
+    //비동기 구문 필요 !!! or 안드로이드 쪽에서 계산하는게 나을것 같음
+    /*
     const accountSQL = 
     'select count(*) as totalCount,sum(json_extract(ShopingList,\'$."price"\')) as TotalSum from Orders where (OwnerEmail =?) and (OrderedDate between date(?) and date(?)+1) order by OrderedDate;'
     connection.query(accountSQL, params, function(err,result){
@@ -308,10 +309,11 @@ router.post('/sellstatus',function(req,res){
             message = "Send Total Count, Sum"
         }
     });
+    */
         res.json({
             resultArray,
-            'totalCount' : totalCount,
-            'totalSum' : totalSum,
+           // 'totalCount' : totalCount,
+           // 'totalSum' : totalSum,
             'code' : resultCode,
             'message' : message
         });
