@@ -2,7 +2,6 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-const gcm = require('node-gcm'); //서버에서 안드로이드로 푸시를 하기 위해서 
 const multer = require('multer');
 const path = require('path'); //파일명 중복을 막기위해서 사용
 const { send } = require('process');
@@ -264,7 +263,7 @@ router.post('/info/withdraw',function(req,res){
     });
 });
 
-//판매 현황 확인 하는 부분
+//판매 현황 확인 하는 부분 (기간 설정하고 조회버튼 클릭 시)
 router.post('/sellstatus',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const startDate = req.body.startDate;
@@ -339,19 +338,14 @@ router.post('/orderlist/complete', function(req,res){
         }else{
             resultCode = 200;
             message = "Message Send"
-            sendPushAlarm();
+            sendPushAlarm(userNum, orderNum);
         }
-
         res.json({
-
+            'code' : resultCode,
+            'message' : message
         });
     });
 });
-function sendPushAlarm(){
-    var message = new gcm.Message({
-        
-    })
-}
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
