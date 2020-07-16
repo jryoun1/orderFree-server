@@ -2,9 +2,13 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+//const serviceAccount = require('../db-config/serviceAccountKey.json'); //serviceAccountKey 정보 
 const multer = require('multer');
 const path = require('path'); //파일명 중복을 막기위해서 사용
-const { send } = require('process');
+//const { send } = require('process');
+const aws = require('aws-sdk');
+const region = 'ap-northeast-2';
+
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -14,6 +18,11 @@ const connection = mysql.createConnection({
     password: db_config.password,
     port: db_config.port
 });
+
+//admin sdk 초기화 부분 
+//admin.initializeApp({
+//    credential : admin.credential.cert(serviceAccount)
+//});
 
 // multer 미들웨어 등록
 const upload = multer({
@@ -323,6 +332,7 @@ router.post('/orderlist/complete', function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const userNum = req.body.userNum;
     const orderNum = req.body.orderNum;
+    const userDeviceToken = req.body.userTargetToken;
     const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
     const params = [orderNum, userNum, ownerEmail];
 
@@ -338,7 +348,7 @@ router.post('/orderlist/complete', function(req,res){
         }else{
             resultCode = 200;
             message = "Message Send"
-            sendPushAlarm(userNum, orderNum);
+            sendPushAlarm(userDeviceToken, orderNum);
         }
         res.json({
             'code' : resultCode,
@@ -346,6 +356,53 @@ router.post('/orderlist/complete', function(req,res){
         });
     });
 });
+
+function sendPushAlarm(userDeviceToken, orderNum){
+    const title = '오더프리 알림입니다.';
+    const message = `${orderNum}번 고객님, 음식이 준비되었습니다.`;
+    const applicationId = '';
+    const action = 'OPEN_APP'; //push message 클릭했을 시 어플 다시 열기(foreground로 가져오기)
+    const priority = 'high'; 
+    const ttl = 30;
+    const silent = false;
+
+    const messageRequest = {
+        'Addresses': {
+          [userDeviceToken]: {
+            'ChannelType' : 'GCM'
+          }
+        },
+        'MessageConfiguration': {
+          'GCMMessage': {
+            'Action': action,
+            'Body': message,
+            'Priority': priority,
+            'SilentPush': silent,
+            'Title': title,
+            'TimeToLive': ttl,
+          }
+        }
+      };
+
+    // Specify that you're using a shared credentials file, and specify the
+    // IAM profile to use.
+    const credentials = new AWS.SharedIniFileCredentials({ profile: 'default' });
+    AWS.config.credentials = credentials;
+    // Specify the AWS Region to use.
+    AWS.config.update({ region: region });
+
+    //Create a new Pinpoint object.
+    const pinpoint = new AWS.Pinpoint();
+    const params = {
+    "ApplicationId": applicationId,
+    "MessageRequest": messageRequest
+    };
+
+    // Try to send the message.
+    pinpoint.sendMessages(params, function(err, data) {
+    if (err) console.log(err);
+  });
+}
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
