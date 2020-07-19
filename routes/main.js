@@ -6,9 +6,8 @@ const db_config = require('../db-config/db-config.json'); // db 설정 정보 �
 const multer = require('multer');
 const path = require('path'); //파일명 중복을 막기위해서 사용
 //const { send } = require('process');
-const aws = require('aws-sdk');
+const AWS = require('aws-sdk');
 const region = 'ap-northeast-2';
-
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -250,7 +249,7 @@ router.post('/info/checkpwd', function(req,res){
 router.post('/info/withdraw',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
-    const trashOwnerEmail = '0@0' //탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
+    const trashOwnerEmail = null; //탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
     const sql = 
     'update Owners set IsOwnerDeleted = ? , OwnerEmail =? where OwnerEmail = ?';
     const params = [ownerWithdraw, trashOwnerEmail, ownerEmail];
@@ -278,7 +277,7 @@ router.post('/sellstatus',function(req,res){
     const startDate = req.body.startDate;
     const endDate = req.body.endDatae;
     const sql = 
-    'select OrderedDate ,json_extract(ShopingList,\'$."menu"\'), json_extract(ShopingList,\'$."count"\'), json_extract(ShopingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) and IsCompleted = true order by OrderedDate';
+    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\'), json_extract(ShoppingList,\'$."count"\'), json_extract(ShoppingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) and IsCompleted = true order by OrderedDate';
     const params = [ ownerEmail, startDate, endDate];
     var resultArray = new Array(); 
 
@@ -346,9 +345,9 @@ router.post('/orderlist/complete', function(req,res){
             resultCode = 400;
             message = "No matching Order";
         }else{
-            resultCode = 200;
-            message = "Message Send"
             sendPushAlarm(userDeviceToken, orderNum);
+            resultCode = 200;
+            message = "Message Send";
         }
         res.json({
             'code' : resultCode,

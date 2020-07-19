@@ -6,7 +6,7 @@ const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
 const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
 require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
-const emailAvailable = false;
+var emailAvailable = false;
 
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
 //그리고 owner는 main에서 호출할 때 /owner로 써줬기 때문에 owner.js에서는 라우딩에 /owner를 안써줘도된다.
@@ -74,7 +74,7 @@ router.post('/join/emailcheck', function (req, res) {
         let message = 'Server Error';
 
         if (err) {
-            console.log(err);
+            console.log(err.stack);
         } else if (data.length === 0) { //중복되는 email이 없는 경우 
             resultCode = 201;
             message = "Email Available"
