@@ -136,6 +136,7 @@ router.post('/login/emailfind', function (req, res) {
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
         let message = 'Server Error';
+        let ownerEmail = null;
 
         if (err) {
             console.log(err);
@@ -145,7 +146,7 @@ router.post('/login/emailfind', function (req, res) {
         }else { //이름과 전화번호가 db에 존재하는 경우
             resultCode = 201;
             message = 'Found Account'
-            let ownerEmail = result[0].OwnerEmail;
+            ownerEmail = result[0].OwnerEmail;
             let splitedEmail = ownerEmail.split('\@');
             let encrpytedEmail;
             if(splitedEmail[0].length > 2){ //이메일 @앞부분이 3글자 이상인 경우 뒷부분 2개를 **로 표시
@@ -155,12 +156,19 @@ router.post('/login/emailfind', function (req, res) {
             }
             ownerEmail = encrpytedEmail + "@" + splitedEmail[1]; // @기준으로 분리했던부분 다시 연결해서 이메일 암호화
         }
+        if(ownerEmail != null){
         res.json({
             'code': resultCode,
             'message': message,
             'ownerEmail': ownerEmail
         });
-    })
+        }else {
+            res.json({
+                'code': resultCode,
+                'message': message
+            });
+        }
+    });
 });
 
 //이메일 이름 전화번호 비교후 일치하면 이메일로 토큰 보내주는 부분
@@ -210,9 +218,9 @@ function passwordMailSend(ownerEmail){
 
     const token = crypto.randomBytes(4).toString('hex');
     let letter = `오더프리 ${ownerEmail}사용자님 반갑습니다.
-    오더프리 비밀번호 찾기 결과입니다.
-    해당 토큰을 10:00분 안에 어플에 입력해주세요. 토큰은 "${token}" 입니다.
-    감사합니다.`
+오더프리 비밀번호 찾기 결과입니다.
+해당 토큰을 10:00분 안에 어플에 입력해주세요. 토큰은 "${token}" 입니다.
+감사합니다.`
     const emailOptions = {
         from : 'jryoun0404@gmail.com', //보내는 사람
         to : ownerEmail, //받는 사람, 즉 비밀번호를 찾고싶어하는 가입자
