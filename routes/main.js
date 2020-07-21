@@ -99,7 +99,7 @@ router.post('/menu/add',function(req,res){
 });
 
 //메뉴 정렬해서 보기 (분류별 정렬을 고르고 적용버튼 클릭시)
-router.post('menu/align',function(req,res){
+router.post('/menu/align',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const category = req.body.category;
     const sql = 
@@ -135,7 +135,7 @@ router.post('menu/align',function(req,res){
 });
 
 //등록된 메뉴 삭제하는 부분 (항목 삭제를 클릭 시)
-router.post('menu/delete',function(req,res){
+router.post('/menu/delete',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const menuName = req.body.menuName;
     const sql = 
@@ -274,17 +274,18 @@ router.post('/info/withdraw',function(req,res){
 //판매 현황 확인 하는 부분 (기간 설정하고 조회버튼 클릭 시)
 router.post('/sellstatus',function(req,res){
     const ownerEmail = req.body.ownerEmail;
-    const startDate = req.body.startDate;
-    const endDate = req.body.endDatae;
+    var startDate = req.body.startDate;
+    IntStartDate = parseInt(startDate);
+    var endDate = req.body.endDate;
+    IntEndDate = parseInt(endDate);
     const sql = 
-    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\'), json_extract(ShoppingList,\'$."count"\'), json_extract(ShoppingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and date(?)+1) and IsCompleted = true order by OrderedDate';
-    const params = [ ownerEmail, startDate, endDate];
+    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\'), json_extract(ShoppingList,\'$."count"\'), json_extract(ShoppingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
+    const params = [ ownerEmail, IntStartDate, IntEndDate];
     var resultArray = new Array(); 
 
     connection.query(sql,params, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
-
         if(err){
             console.log(err);
         }else if(result.length === 0){
@@ -402,6 +403,276 @@ function sendPushAlarm(userDeviceToken, orderNum){
     if (err) console.log(err);
   });
 }
+
+
+/**
+ * glen 메인 화면에서 메뉴 등록 버튼 클릭시, 또는 메뉴 등록하고 나서 새로고침처럼 이동 시 
+ * */
+router.post('/menu/menuList', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    //const menuName = req.body.menuName;
+    const sql = 'select * from Menus where (json_extract(Menu,\'$."ownerEmail"\') = ?)';
+    const params = [ownerEmail];
+
+    console.log("menuList First log...!!!");
+    console.log("menuList request : " + req);
+
+    connection.query(sql, params, function (err, result) {
+        console.log("Hi...!!!");
+        let resultCode = 500;
+        let message = "Server Error";
+        var result_menuList = new Array();
+
+        if (err) {
+            console.log("Error occured!!! from searching menu list!!! ERROR CONTENT : " + err);
+            return;
+        }
+        if (result.length === 0) {
+            console.log("ERROR!!! result[0] is undefined!!!");
+            return;
+        }
+        else {
+            var resultJson_menuList = new Object()
+            console.log("result : ", result);
+            for (var i = 0; i < result.length; i++) {
+                console.log("Index : " + i + "result[" + i + "]" + result[i]);
+                resultJson_menuList = result[i]
+                result_menuList.push(resultJson_menuList)
+            }
+            //result_menuList = result; // 이거 반복문 돌려줘야함. 객체 여러개 넘어올수도 있기 떄문에. 메뉴 여러개면 여러번임;
+            resultCode = 200;
+            message = "Successfully searched menu";
+        }
+        res.json({
+            result_menuList,
+            'code': resultCode,
+            'message': message
+        });  
+    });
+});
+
+/**
+ * 메뉴상세보기. (메뉴 클릭했을 때)
+ */
+router.post('/menu/menuSpecification', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const menuName = req.body.menuName;
+    const sql = 'select * from Menus where json_extract(Menu,\'$."ownerEmail"\') = ? && json_extract(Menu, \'$."menuName"\') = ?';
+    const params = [ownerEmail, menuName];
+
+    connection.query(sql, params, function (err, result) {
+        let resultCode = 500;
+        let message = "Server Error";
+        // var result_menuSpecification;
+
+        if (err) {
+            console.log("Err occured!!! from searching menu list \"eachMenu\"!!! ERROR CONTENT : " + err);
+            return;
+        }
+        if (result.length === 0) {
+            console.log("ERROR!!! result[0] is undefined!!!");
+            return;
+        }
+        else {
+            console.log("result : ", result);
+            // result_menuSpecification = result;
+            // console.log("result_menuList_eachMenu", result_menuSpecification);
+            resultCode = 200;
+            message = "Successfully searched menu(eachMenu)";
+        }
+        res.json({
+            result,
+            'code': resultCode,
+            'message': message
+        });
+    });
+});
+
+router.post('/menu/orderedList', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const sql = 'select * from Orders where OwnerEmail = ?';
+    const params = [ownerEmail];
+
+    connection.query(sql, params, function (err, result) {
+        let resultCode = 500;
+        let message = "Server Error";
+        var orderedList = new Array();
+
+        if (err) {
+            console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "ERROR CONTENT : " + err);
+            return;
+        }
+        if (result.length === 0) {
+            console.log("ERROR!!! result[0] is undefined!!!");
+            return;
+        }
+        else {
+            var resultJson_orderedList = new Object()
+            console.log("result : ", result);
+            for (var i = 0; i < result.length; i++) {
+                console.log("Index : " + i + "result[" + i + "]" + result[i]);
+                resultJson_orderedList = result[i]
+                orderedList.push(resultJson_orderedList)
+            }
+            resultCode = 200;
+            message = "Successfully searched orderedList";
+        }
+        res.json({
+            orderedList,
+            'code': resultCode,
+            'message': message
+        });
+    });
+});
+
+router.post('/menu/orderedListSpecification', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const orderNum = req.body.orderNum;
+    const userNum = req.body.userNum;
+    const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
+    const params = [ownerEmail, orderNum, userNum];
+
+    connection.query(sql, params, function (err, result) {
+        let resultCode = 500;
+        let message = "Server Error";
+        let resultJson = new JSON();
+
+        if (err) {
+            console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "ERROR CONTENT : " + err);
+            return;
+        }
+        if (result.length === 0) {
+            console.log("ERROR!!! result[0] is undefined!!!");
+            return;
+        }
+        else {
+            console.log("result : ", result);
+            resultJson = result[0];
+            resultCode = 200;
+            message = "Successfully searched orderedList(eachOrder)";
+        }
+        res.json({
+            resultJson,
+            'code': resultCode,
+            'message': message
+        });
+    });
+});
+
+router.post('/menu/orderList/previousOrder', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const orderNum = req.body.orderNum;
+    const userNum = req.body.userNum;
+    var previouseOrderNum = orderNum;
+    var isSearched = false;
+
+    for (var index = 0; index < orderNum; index++) {
+        if (previouseOrderNum === 0 && !isSearched) {
+            console.log("Previous Order Is NOT exist!!!")
+            res.json({
+                'code': 500,
+                'message': "Previous Order Is NOT exist"
+            })
+            return;
+        }// Async 처리 가능하도록 하기.
+        else {
+            previouseOrderNum = previouseOrderNum - 1;
+            const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
+            const params = [ownerEmail, previouseOrderNum, userNum];
+        }
+
+        connection.query(sql, params, function (err, result) {
+            let resultCode = 500;
+            let message = "Server Error";
+            var result_orderedList_previousOrder = new JSON();
+
+            if (err) {
+                console.log("Err occured!!! from searching Ordered List(Previous Order)!!!, variable ownerEmail = " + ownerEamil + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
+                return;
+            }
+            if (result[0] == undefined) {
+                console.log("ERROR!!! result[0] is undefined!!!");
+                return;
+            }
+            else {
+                isSearched = true
+                console.log("result : ", result);
+                result_orderedList_previousOrder = result;
+                resultCode = 200;
+                message = "Successfully searched Previous order list";
+            }
+            res.json({
+                result_orderedList_previousOrder,
+                'code': resultCode,
+                'message': message
+            });
+        });
+    }
+    // const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
+    // const params = [ownerEmail, orderNum, userNum];
+
+
+});
+
+/**
+ * 
+ */
+router.post('/menu/orderList/nextOrder', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const orderNum = req.body.orderNum;
+    const userNum = req.body.userNum;
+    var nextOrderNum = orderNum
+    var isSearched = false;
+
+    for (var index = 0; index < orderNum; index++) {
+        if (nextOrderNum === 0 && !isSearched) { // Error Handling.
+            console.log("Next Order Is NOT exist!!!")
+            res.json({
+                'code': 500,
+                'message': "Next Order Is NOT exist"
+            })
+            return
+        }
+        else {
+            isSearched = true
+            nextOrderNum = nextOrderNum + 1
+            const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
+            const params = [ownerEmail, nextOrderNum, userNum];
+        }
+
+        connection.query(sql, params, function (err, result) {
+            let resultCode = 500;
+            let message = "Server Error";
+            var result_orderedList_nextOrder = new JSON();
+
+            if (err) {
+                console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
+                return
+            }
+            if (result.length === 0) {
+                console.log("ERROR!!! result[0] is undefined!!!");
+                return
+            }
+            else {
+                console.log("result : ", result);
+                result_orderedList_nextOrder = result;
+                resultCode = 200;
+                message = "Successfully searched Next order list";
+            }
+            res.json({
+                result_orderedList_nextOrder,
+                'code': resultCode,
+                'message': message
+            });
+        });
+
+        if (result.IsCompleted == true) {
+            isSearched = false
+            continue
+        }
+    }
+});
+/** */
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
