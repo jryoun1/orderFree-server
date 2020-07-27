@@ -1696,6 +1696,7 @@
       "version": "2.1.2"
     },
     "multer": "^1.4.2",
+    "multer-s3": "^2.9.0",
     "mysql": "^2.18.1",
     "nan": {
       "integrity": "sha512-isWHgVjnFjh2x2yuJ/tj3JbwoHu3UC2dX5G/88Cm24yB6YopVgxvBObDY7n5xW6ExmFhJpSEQqFPvq9zaXc8Jw==",
@@ -1913,6 +1914,7 @@
       "resolved": "https://registry.npmjs.org/p-try/-/p-try-2.2.0.tgz",
       "version": "2.2.0"
     },
+    "path": "^0.12.7",
     "path-is-absolute": {
       "integrity": "sha1-F0uSaHNVNP+8es5r9TpanhtcX18=",
       "resolved": "https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz",

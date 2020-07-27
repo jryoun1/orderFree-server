@@ -2,10 +2,9 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-//const serviceAccount = require('../db-config/serviceAccountKey.json'); //serviceAccountKey 정보 
 const multer = require('multer');
+const multerS3 = require('multer-s3');
 const path = require('path'); //파일명 중복을 막기위해서 사용
-//const { send } = require('process');
 const AWS = require('aws-sdk');
 const region = 'ap-northeast-2';
 
@@ -18,38 +17,28 @@ const connection = mysql.createConnection({
     port: db_config.port
 });
 
-//admin sdk 초기화 부분 
-//admin.initializeApp({
-//    credential : admin.credential.cert(serviceAccount)
-//});
-
+let s3 = new AWS.S3();
+AWS.config.loadFromPath(__dirname + '/../db-config/awsconfig.json'); // aws 인증
 // multer 미들웨어 등록
 const upload = multer({
-    // S3에 파일 업로드 하는 방식이 2가지 1. 디스크에서 파일 업로드, 2. 파일 버퍼(메모리)를 업로드 
-    // 지금방식은 1번 방식 
-    storage: multer.diskStorage({ //저장될 경로 설정
-        destination: function(req,file,cb){
-            cb(null,'upload/');
+    storage: multerS3({
+        s3: s3,
+        bucket: "valueUp",
+        key: function(req,file,cb){
+            let extension = path.extname(file.originalname);
+            cb(null, Date.now().toString()+ extension)
         },
-        filename: function(req,res,cb){ 
-            // 저장될 파일명 설정 (중복을 막기위해서 파일명에 타임스탬프 사용)
-            // 타임스탬프.확장자 형식으로 파일명 지정
-            cb(null, new Date().valueOf() + path.extname(file.originalname));
-        }
+        contentType: multerS3.AUTO_CONTENT_TYPE,
+        acl: 'public-read-write',
     }),
 });
 
-//menu 사진 올리는 부분
-router.post('/menu/add',upload.single("img"),function(req,res){
-    //파일 객체
-    let file = req.file;
-    //파일 정보
-    let result ={
-        originalName :file.originalname,
-        size :file.size,
-    }
-    res.json(result);
-})
+//사진을 보냈을 때 받아서 s3로 저장하는부분??
+router.post('menu/add',upload.single("imgFile"),function(req,res,next){
+    console.log(req.file);
+    let url = req.location;
+    console.log(url);
+});
 
 //메뉴 등록 및 수정하는 부분 (메뉴 등록 버튼 누를 때)
 router.post('/menu/add',function(req,res){
