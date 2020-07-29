@@ -427,11 +427,15 @@ router.post('/menu/menuList', function (req, res) {
             return;
         }
         else {
+            
             var resultJson_menuList = new Object();
             console.log("result : ", result);
             for (var i = 0; i < result.length; i++) {
-                console.log("Index : " + i + "result[" + i + "]" + result[i]);
-                resultJson_menuList.menuName = result[i].menuName;
+                console.log("Index : " + i + "result[" + i + "]" + result[i]); 
+                //이름에서 ""파싱해서 보내는 부분 by 정민 
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                //jsonObject에 전송할 부분 담고, Array에 push 하는 부분 by 정민 
+                resultJson_menuList.menuName = menuName;
                 resultJson_menuList.category = result[i].category;
                 result_menuList.push(resultJson_menuList);
                 console.log(result_menuList[i]);
