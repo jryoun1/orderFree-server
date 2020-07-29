@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
 const multer = require('multer');
+const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 const multerS3 = require('multer-s3');
 const path = require('path'); //파일명 중복을 막기위해서 사용
 const AWS = require('aws-sdk');
@@ -34,11 +35,11 @@ const upload = multer({
 });
 
 //사진을 보냈을 때 받아서 s3로 저장하는부분??
-router.post('menu/add',upload.single("imgFile"),function(req,res,next){
-    console.log(req.file);
-    let url = req.location;
-    console.log(url);
-});
+//router.post('menu/add',upload.single("imgFile"),function(req,res,next){
+//    console.log(req.file);
+//    let url = req.location;
+//    console.log(url);
+//});
 
 //메뉴 등록 및 수정하는 부분 (메뉴 등록 버튼 누를 때)
 router.post('/menu/add',function(req,res){
@@ -50,7 +51,8 @@ router.post('/menu/add',function(req,res){
     const decisionNum = req.body.decisionNum;
     
     if(decisionNum === 1){ //항목추가로 메뉴를 생성하는 경우 
-        const sql = 'insert into Menus values(json_object("ownerEmail", ?, "category", ?, "menuName", ?, "price", ?, "info", ? ))';
+        const sql = 
+        'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : ?, "price" : ? ,"url" : ?, "info" : ? }\')';
         const params = [ownerEmail,category,menuName,price,info];
 
         connection.query(sql, params, function(err, result){
@@ -66,7 +68,7 @@ router.post('/menu/add',function(req,res){
     }else if(decisionNum === 2){ //생성된 메뉴 클릭하여 수정하는 경우 
         const menuOriginalName = req.body.menuOriginalName;
         const sql = 
-        'update Menus set Menu = json_set(Menu,\'$."menuName"\', ?), Menu = json_set(Menu,\'$."category"\',?),Menu = json_set(Menu,\'$."price"\',?), Menu = json_set(Menu,\'$."info"\',?) where (json_extract(Menu,\'$."ownerEmail"\') = ? )and json_extract(Menu,\'$."menuName"\') =?';
+        'update Menus set Menu = json_set(Menu,\'$."menuName"\', ?), Menu = json_set(Menu,\'$."category"\',?),Menu = json_set(Menu,\'$."price"\',?), Menu = json_set(Menu,\'$."info"\',?) where OwnerEmail = ? and json_extract(Menu,\'$."menuName"\') =?';
         const params = [menuName,category,price,info,ownerEmail,menuOriginalName];
 
         connection.query(sql, params, function(err, result){
@@ -205,25 +207,26 @@ router.post('/info',function(req,res){
 });
 
 //내 정보 수정에서 비밀번호 변경 (현재 비밀번호 입력 후 변경 버튼 클릭 시)
+//이메일 주소 입력하면 db에서 해당하는 Owner의 OwnerSalt와 비밀번호 가져와서
+//사용자가 입력한 것에 Salt값 연산후 OwnerPwd와 비교하여 일치하는지 확인 -- By 정민
 router.post('/info/checkpwd', function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const ownerPwd = req.body.ownerPwd;
-    const hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
-    const sql = 'select OwnerPwd from Owners where OwnerEmail = ?';
+    //const hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
+    const sql = 'select OwnerPwd, OwnerSalt from Owners where OwnerEmail = ?';
 
     connection.query(sql, ownerEmail,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
-
         if(err){
             console.log(err);
         }else if(result.length === 0){
             resultCode = 400;
             message = 'Invalid Email';    
-        }else if(result[0].OwnerPwd !== hashedPwd){
+        }else if(result[0].OwnerPwd !== crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")){
             resultCode = 400;
             message = 'Wrong Password';
-        }else if(result[0].OwnerPwd === hashedPwd){
+        }else if(result[0].OwnerPwd === crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")){
             resultCode = 200;
             message = 'Right Password';
         }
@@ -268,13 +271,15 @@ router.post('/sellstatus',function(req,res){
     var endDate = req.body.endDate;
     IntEndDate = parseInt(endDate);
     const sql = 
-    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\'), json_extract(ShoppingList,\'$."count"\'), json_extract(ShoppingList,\'$."price"\') from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
+    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\') as menu, json_extract(ShoppingList,\'$."count"\') as count, json_extract(ShoppingList,\'$."price"\') as price from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
     const params = [ ownerEmail, IntStartDate, IntEndDate];
     var resultArray = new Array(); 
-
+    
     connection.query(sql,params, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
+        console.log(`${IntStartDate} 기간과 ${IntEndDate} 기간 사이의 판매결과를 조회합니다.`);
+        console.log(result);
         if(err){
             console.log(err);
         }else if(result.length === 0){
@@ -291,6 +296,7 @@ router.post('/sellstatus',function(req,res){
             }
             resultCode = 200;
             message = "Send Sell Status";
+
         }
         res.json({
             resultArray,
@@ -400,12 +406,12 @@ function sendPushAlarm(userDeviceToken, orderNum){
 router.post('/menu/menuList', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     //const menuName = req.body.menuName;
-    const sql = 'select * from Menus where (json_extract(Menu,\'$."ownerEmail"\') = ?)';
+    const sql = 
+    'select json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category from Menus where OwnerEmail = ?';
     const params = [ownerEmail];
 
     console.log("menuList First log...!!!");
     console.log("menuList request : " + req);
-
     connection.query(sql, params, function (err, result) {
         console.log("Hi...!!!");
         let resultCode = 500;
@@ -421,12 +427,14 @@ router.post('/menu/menuList', function (req, res) {
             return;
         }
         else {
-            var resultJson_menuList = new Object()
+            var resultJson_menuList = new Object();
             console.log("result : ", result);
             for (var i = 0; i < result.length; i++) {
                 console.log("Index : " + i + "result[" + i + "]" + result[i]);
-                resultJson_menuList = result[i]
-                result_menuList.push(resultJson_menuList)
+                resultJson_menuList.menuName = result[i].menuName;
+                resultJson_menuList.category = result[i].category;
+                result_menuList.push(resultJson_menuList);
+                console.log(result_menuList[i]);
             }
             //result_menuList = result; // 이거 반복문 돌려줘야함. 객체 여러개 넘어올수도 있기 떄문에. 메뉴 여러개면 여러번임;
             resultCode = 200;

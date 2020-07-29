@@ -52,6 +52,7 @@ router.post('/join', function (req, res, next) {
         } else if (emailAvailable === true) {
             resultCode = 201;
             message = 'Join Success';
+            console.log(`${ownerEmail}로 ${ownerName}이름의 사용자가 가입을 하였습니다.`);
         }
         res.json({
             'code': resultCode,
@@ -69,7 +70,6 @@ router.post('/join/emailcheck', function (req, res) {
 
     //Email 중복체크를 수행 
     connection.query(email_check_sql, ownerEmail, function (err, data) {
-        console.log(data);
         let resultCode = 500;
         let message = 'Server Error';
 
@@ -79,7 +79,9 @@ router.post('/join/emailcheck', function (req, res) {
             resultCode = 201;
             message = "Email Available"
             emailAvailable = true;
+            console.log('이메일 중복체크 결과 사용가능');
         } else { //중복되는 email 있는 경우 중복임을 알려준다.
+            console.log('이메일 중복체크 결과 중복이메일 있다');
             resultCode = 400;
             message = 'Email Exist'
         }
@@ -242,10 +244,11 @@ function passwordMailSend(ownerEmail){
 //비밀번호 찾기에서 비밀번호 변경하는 부분
 router.post('/login/changepwd',function(req, res){
     const ownerEmail = req.body.ownerEmail;
-    const ownerPwd = req.body.owenerPwd;
+    const ownerPwd = req.body.ownerPwd;
+    const salt = Math.round((new Date().valueOf()*Math.random()))+"";
     const hashedPwd = crypto.createHash("sha512").update(ownerPwd + salt).digest("hex");
-    const sql = 'update Owners set OwnerPwd = ? where OwnerEamil = ?';
-    const params =[ownerEmail, hashedPwd];
+    const sql = 'update Owners set OwnerPwd = ?, OwnerSalt =? where OwnerEmail = ?';
+    const params =[hashedPwd, salt ,ownerEmail];
 
     connection.query(sql,params,function(err,result){
         let resultCode = 500;
@@ -257,6 +260,7 @@ router.post('/login/changepwd',function(req, res){
             resultCode = 400;
             message = 'Invalid Account';
         }else {
+            console.log("Password Changed")
             resultCode = 200;
             message ="Password Changed"
         }
