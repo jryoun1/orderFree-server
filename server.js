@@ -18,4 +18,4 @@ app.use('/main',ownerMainRouter);
 //app.use('/upload',fileUploadRouter);
 //upload폴더에 대한 경로를 단순화하기 위해서 static으로 설정
 //가상경로로 설정 시, static 파일이 있는 upload폴더는 내부적으로 /upload라는 가상경로로 접근 가능
-//app.use('/upload',express.static('uploads')); 
+//app.use('/upload',express.static('uploads'));

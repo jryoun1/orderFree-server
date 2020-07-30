@@ -108,8 +108,8 @@ router.post('/menu/align',function(req,res){
             resultCode = 400;
             message = "No Menu Exist";
         }else{
-            var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
             for(var i = 0; i < result.length; i++){
+                var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
                 resultJson.menuName = result[i].menuName;
                 resultJson.category = result[i].category;
                 resultArray.push(resultJson);
@@ -286,17 +286,19 @@ router.post('/sellstatus',function(req,res){
             resultCode = 400;
             message = "No Record Exists During Term";
         }else{
-            var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
+            console.log("클라이언트로 보내지는 Array 내용");
             for(var i = 0; i < result.length; i++){
+                //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
+                var resultJson = new Object();
+                var menu = result[i].menu.substring(1,result[i].menu.indexOf("\"",1));
                 resultJson.orderedDate = result[i].OrderedDate;
-                resultJson.menu = result[i].menu;
+                resultJson.menu = menu;
                 resultJson.count = result[i].count;
                 resultJson.price = result[i].price;
                 resultArray.push(resultJson);
             }
             resultCode = 200;
             message = "Send Sell Status";
-
         }
         res.json({
             resultArray,
@@ -304,22 +306,6 @@ router.post('/sellstatus',function(req,res){
             'message' : message
         });
     });
-    //비동기 구문 필요 !!! or 안드로이드 쪽에서 계산하는게 나을것 같음
-    /*
-    const accountSQL = 
-    'select count(*) as totalCount,sum(json_extract(ShopingList,\'$."price"\')) as TotalSum from Orders where (OwnerEmail =?) and (OrderedDate between date(?) and date(?)+1) order by OrderedDate;'
-    connection.query(accountSQL, params, function(err,result){
-        let resultCode = 500;
-        let message = "Server Error";
-        
-        if(err){
-            console.log(err);
-        }else {
-            resultCode = 200;
-            message = "Send Total Count, Sum"
-        }
-    });
-    */
 });
 
 //주문 목록확인에서 음식 준비 완료 눌렀을 때 
@@ -427,10 +413,9 @@ router.post('/menu/menuList', function (req, res) {
             return;
         }
         else {
-            
-            var resultJson_menuList = new Object();
             console.log("result : ", result);
             for (var i = 0; i < result.length; i++) {
+                var resultJson_menuList = new Object();
                 console.log("Index : " + i + "result[" + i + "]" + result[i]); 
                 //이름에서 ""파싱해서 보내는 부분 by 정민 
                 var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
@@ -508,9 +493,9 @@ router.post('/menu/orderedList', function (req, res) {
             return;
         }
         else {
-            var resultJson_orderedList = new Object()
             console.log("result : ", result);
             for (var i = 0; i < result.length; i++) {
+                var resultJson_orderedList = new Object();
                 console.log("Index : " + i + "result[" + i + "]" + result[i]);
                 resultJson_orderedList = result[i]
                 orderedList.push(resultJson_orderedList)
