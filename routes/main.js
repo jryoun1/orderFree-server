@@ -95,9 +95,9 @@ router.post('/menu/align',function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const category = req.body.category;
     const sql = 
-    'select json_extract(Menu,\'$."menuName"\'), json_extract(Menu, \'$."category"\') from Menus where json_extract(Menu,\'$."ownerEmail"\') = ? && json_extract(Menu,\'$."category"\') = ?';
+    'select json_extract(Menu,\'$."menuName"\') as menuName , json_extract(Menu, \'$."category"\') as category from Menus where OwnerEmail = ? && json_extract(Menu,\'$."category"\') = ?';
     const params = [ownerEmail,category];
-    var resultArray = new Array(); 
+    var resultAlign = new Array(); 
 
     connection.query(sql, params, function(err, result){
         let resultCode = 500;
@@ -111,15 +111,16 @@ router.post('/menu/align',function(req,res){
         }else{
             for(var i = 0; i < result.length; i++){
                 var resultJson = new Object(); //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
-                resultJson.menuName = result[i].menuName;
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                resultJson.menuName = menuName;
                 resultJson.category = result[i].category;
-                resultArray.push(resultJson);
+                resultAlign.push(resultJson);
             }
             resultCode = 201;
             message = "Menu Aligned";
         }
         res.json({
-            resultArray,
+            resultAlign,
             'code' : resultCode,
             'message' : message
         });
