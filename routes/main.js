@@ -426,7 +426,6 @@ router.post('/menu/menuList', function (req, res) {
                 result_menuList.push(resultJson_menuList);
                 console.log(result_menuList[i]);
             }
-            //result_menuList = result; // 이거 반복문 돌려줘야함. 객체 여러개 넘어올수도 있기 떄문에. 메뉴 여러개면 여러번임;
             resultCode = 200;
             message = "Successfully searched menu";
         }
@@ -444,13 +443,13 @@ router.post('/menu/menuList', function (req, res) {
 router.post('/menu/menuSpecification', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const menuName = req.body.menuName;
-    const sql = 'select * from Menus where json_extract(Menu,\'$."ownerEmail"\') = ? && json_extract(Menu, \'$."menuName"\') = ?';
+    const sql = 'select json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."imgURL"\') as imgURL, json_extract(Menu,\'$."price"\') as price, json_extract(Menu,\'$."info"\') as info from Menus where OwnerEmail = ? && json_extract(Menu, \'$."menuName"\') = ?';
     const params = [ownerEmail, menuName];
 
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
         let message = "Server Error";
-        // var result_menuSpecification;
+        var resultMenuSpecification = new Object();
 
         if (err) {
             console.log("Err occured!!! from searching menu list \"eachMenu\"!!! ERROR CONTENT : " + err);
@@ -461,14 +460,24 @@ router.post('/menu/menuSpecification', function (req, res) {
             return;
         }
         else {
-            console.log("result : ", result);
-            // result_menuSpecification = result;
-            // console.log("result_menuList_eachMenu", result_menuSpecification);
+            console.log("메뉴 상세보기");
+            
+            //""파싱하는 부분 by 정민 
+            var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
+            var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
+            var info = result[0].info.substring(1,result[0].info.indexOf("\"",1));
+            //jsonObject에 전송할 부분 담는부분 by 정민 
+            resultMenuSpecification.menuName = menuName;
+            resultMenuSpecification.category = result[0].category;
+            resultMenuSpecification.imgURL = imgURL;
+            resultMenuSpecification.price = result[0].price;
+            resultMenuSpecification.info = info;
+
             resultCode = 200;
             message = "Successfully searched menu(eachMenu)";
         }
         res.json({
-            result,
+            resultMenuSpecification,
             'code': resultCode,
             'message': message
         });
