@@ -44,16 +44,17 @@ const upload = multer({
 //메뉴 등록 및 수정하는 부분 (메뉴 등록 버튼 누를 때)
 router.post('/menu/add',function(req,res){
     const ownerEmail = req.body.ownerEmail;
-    const menuName = req.body.menuName;
-    const category = req.body.category;
-    const price = req.body.price;
-    const info = req.body.info;
-    const decisionNum = req.body.decisionNum;
+    var menuName = req.body.menuName;
+    var category = req.body.category;
+    var imgURL = req.body.imgURL;
+    var price = req.body.price;
+    var info = req.body.info;
+    var decisionNum = req.body.decisionNum;
     
     if(decisionNum === 1){ //항목추가로 메뉴를 생성하는 경우 
         const sql = 
-        'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : ?, "price" : ? ,"url" : ?, "info" : ? }\')';
-        const params = [ownerEmail,category,menuName,price,info];
+        'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : ?, "price" : ? ,"imgURL" : ?, "info" : ? }\')';
+        const params = [ownerEmail,category,menuName, price, imgURL,info];
 
         connection.query(sql, params, function(err, result){
             let resultCode = 500;
@@ -66,10 +67,10 @@ router.post('/menu/add',function(req,res){
             }
         });
     }else if(decisionNum === 2){ //생성된 메뉴 클릭하여 수정하는 경우 
-        const menuOriginalName = req.body.menuOriginalName;
+        var menuOriginalName = req.body.menuOriginalName;
         const sql = 
-        'update Menus set Menu = json_set(Menu,\'$."menuName"\', ?), Menu = json_set(Menu,\'$."category"\',?),Menu = json_set(Menu,\'$."price"\',?), Menu = json_set(Menu,\'$."info"\',?) where OwnerEmail = ? and json_extract(Menu,\'$."menuName"\') =?';
-        const params = [menuName,category,price,info,ownerEmail,menuOriginalName];
+        'update Menus set Menu = json_set(Menu,\'$."menuName"\', ?), Menu = json_set(Menu,\'$."category"\',?), Menu = json_set(Menu,\'$."imgURL"\',?), Menu = json_set(Menu,\'$."price"\',?), Menu = json_set(Menu,\'$."info"\',?) where OwnerEmail = ? and json_extract(Menu,\'$."menuName"\') =?';
+        const params = [menuName,category, imgURL, price, info, ownerEmail, menuOriginalName];
 
         connection.query(sql, params, function(err, result){
             let resultCode = 500;
