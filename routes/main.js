@@ -273,7 +273,7 @@ router.post('/sellstatus',function(req,res){
     var endDate = req.body.endDate;
     IntEndDate = parseInt(endDate);
     const sql = 
-    'select OrderedDate ,json_extract(ShoppingList,\'$."menu"\') as menu, json_extract(ShoppingList,\'$."count"\') as count, json_extract(ShoppingList,\'$."price"\') as price from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
+    'select OrderedDate ,OrderNum, json_extract(ShoppingList,\'$."count"\') as count, json_extract(ShoppingList,\'$."price"\') as price from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
     const params = [ ownerEmail, IntStartDate, IntEndDate];
     var resultArray = new Array(); 
     
@@ -292,9 +292,10 @@ router.post('/sellstatus',function(req,res){
             for(var i = 0; i < result.length; i++){
                 //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
                 var resultJson = new Object();
-                var menu = result[i].menu.substring(1,result[i].menu.indexOf("\"",1));
+                //var menu = result[i].menu.substring(1,result[i].menu.indexOf("\"",1));
                 resultJson.orderedDate = result[i].OrderedDate;
-                resultJson.menu = menu;
+                //resultJson.menu = menu;
+                resultJson.orderNum = result[i].OrderNum;
                 resultJson.count = result[i].count;
                 resultJson.price = result[i].price;
                 resultArray.push(resultJson);
@@ -465,17 +466,18 @@ router.post('/menu/menuSpecification', function (req, res) {
             
             //""파싱하는 부분 by 정민 
             var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
-            var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
+            //var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
             var info = result[0].info.substring(1,result[0].info.indexOf("\"",1));
             //jsonObject에 전송할 부분 담는부분 by 정민 
             resultMenuSpecification.menuName = menuName;
             resultMenuSpecification.category = result[0].category;
-            resultMenuSpecification.imgURL = imgURL;
+            //resultMenuSpecification.imgURL = imgURL;
             resultMenuSpecification.price = result[0].price;
             resultMenuSpecification.info = info;
 
             resultCode = 200;
             message = "Successfully searched menu(eachMenu)";
+            console.log(resultMenuSpecification);
         }
         res.json({
             resultMenuSpecification,
@@ -485,15 +487,17 @@ router.post('/menu/menuSpecification', function (req, res) {
     });
 });
 
-router.post('/menu/orderedList', function (req, res) {
+router.post('/orderedList', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
-    const sql = 'select * from Orders where OwnerEmail = ?';
+    const sql = 'select OrderNum from Orders where OwnerEmail = ?';
     const params = [ownerEmail];
-
+    console.log("before query");
+    
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
         let message = "Server Error";
         var orderedList = new Array();
+        console.log("query");
 
         if (err) {
             console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "ERROR CONTENT : " + err);
@@ -525,9 +529,8 @@ router.post('/menu/orderedList', function (req, res) {
 router.post('/menu/orderedListSpecification', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const userNum = req.body.userNum;
-    const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
-    const params = [ownerEmail, orderNum, userNum];
+    const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menu, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
+    const params = [ownerEmail, orderNum];
 
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
