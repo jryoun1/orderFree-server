@@ -2,12 +2,14 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const serviceAccount = require('../db-config/fcm-serviceAccountKey.json');
 const multer = require('multer');
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 const multerS3 = require('multer-s3');
 const path = require('path'); //파일명 중복을 막기위해서 사용
 const AWS = require('aws-sdk');
 const region = 'ap-northeast-2';
+const admin = require("firebase-admin");
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -17,6 +19,10 @@ const connection = mysql.createConnection({
     password: db_config.password,
     port: db_config.port
 });
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
 
 let s3 = new AWS.S3();
 AWS.config.loadFromPath(__dirname + '/../db-config/awsconfig.json'); // aws 인증
@@ -316,11 +322,10 @@ router.post('/orderlist/complete', function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const userNum = req.body.userNum;
     const orderNum = req.body.orderNum;
-    const userDeviceToken = req.body.userTargetToken;
-    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
-    const params = [orderNum, userNum, ownerEmail];
+    
+    const sql = 'select UserDeviceToken from Users where userNum = ?';
 
-    connection.query(sql, params, function(err,result){
+    connection.query(sql, userNum, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
 
@@ -330,7 +335,23 @@ router.post('/orderlist/complete', function(req,res){
             resultCode = 400;
             message = "No matching Order";
         }else{
-            sendPushAlarm(userDeviceToken, orderNum);
+            updateIsCompleted(orderNum,userNum,ownerEmail);
+            let userDeviceToken = result[0].UserDeviceToken;
+            let fcmMessage = {
+                notification:{
+                    title: '오더프리',
+                    body: '주문하신 상품이 준비완료되었습니다.'
+                },
+                token : userDeviceToken
+            };
+            admin.messaging().send(fcmMessage)
+                .then((response)=>{
+                    console.log('successfully push notification',response);
+                })
+                .catch((error)=>{
+                    console.log('Error sending push notification',error);
+                });
+            
             resultCode = 200;
             message = "Message Send";
         }
@@ -341,51 +362,17 @@ router.post('/orderlist/complete', function(req,res){
     });
 });
 
-function sendPushAlarm(userDeviceToken, orderNum){
-    const title = '오더프리 알림입니다.';
-    const message = `${orderNum}번 고객님, 음식이 준비되었습니다.`;
-    const applicationId = '';
-    const action = 'OPEN_APP'; //push message 클릭했을 시 어플 다시 열기(foreground로 가져오기)
-    const priority = 'high'; 
-    const ttl = 30;
-    const silent = false;
+function updateIsCompleted(orderNum,userNum,ownerEmail){
+    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
+    const params = [orderNum, userNum, ownerEmail];
 
-    const messageRequest = {
-        'Addresses': {
-          [userDeviceToken]: {
-            'ChannelType' : 'GCM'
-          }
-        },
-        'MessageConfiguration': {
-          'GCMMessage': {
-            'Action': action,
-            'Body': message,
-            'Priority': priority,
-            'SilentPush': silent,
-            'Title': title,
-            'TimeToLive': ttl,
-          }
+    connection.query(sql, params, function(err,result){
+        if(err){
+            console.log(err);
+        }else{
+            console.log("IsCompleted Update success");
         }
-      };
-
-    // Specify that you're using a shared credentials file, and specify the
-    // IAM profile to use.
-    const credentials = new AWS.SharedIniFileCredentials({ profile: 'default' });
-    AWS.config.credentials = credentials;
-    // Specify the AWS Region to use.
-    AWS.config.update({ region: region });
-
-    //Create a new Pinpoint object.
-    const pinpoint = new AWS.Pinpoint();
-    const params = {
-    "ApplicationId": applicationId,
-    "MessageRequest": messageRequest
-    };
-
-    // Try to send the message.
-    pinpoint.sendMessages(params, function(err, data) {
-    if (err) console.log(err);
-  });
+    });
 }
 
 
@@ -487,7 +474,7 @@ router.post('/menu/menuSpecification', function (req, res) {
     });
 });
 
-router.post('/orderedList', function (req, res) {
+router.post('/menu/orderedList', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const sql = 'select OrderNum from Orders where OwnerEmail = ?';
     const params = [ownerEmail];

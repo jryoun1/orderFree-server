@@ -953,6 +953,7 @@
       "resolved": "https://registry.npmjs.org/faye-websocket/-/faye-websocket-0.11.1.tgz",
       "version": "0.11.1"
     },
+    "firebase-admin": "^9.0.0",
     "forever-agent": {
       "integrity": "sha1-+8cfDEGt6zf5bFd60e1C2P2sypE=",
       "resolved": "https://registry.npmjs.org/forever-agent/-/forever-agent-0.6.1.tgz",
