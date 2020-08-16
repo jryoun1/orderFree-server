@@ -269,7 +269,7 @@ router.post('/login/changepwd',function(req, res){
 
     connection.query(sql,params,function(err,result){
         let resultCode = 500;
-        let message = "Server Error"
+        let message = "Server Error";
 
         if(err){
             console.log(err);
@@ -277,9 +277,9 @@ router.post('/login/changepwd',function(req, res){
             resultCode = 400;
             message = 'Invalid Account';
         }else {
-            console.log("Password Changed")
+            console.log("User Password Changed");
             resultCode = 200;
-            message ="Password Changed"
+            message ="Password Changed";
         }
         res.json({
             'code' : resultCode,

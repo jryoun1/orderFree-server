@@ -15,16 +15,42 @@ const connection = mysql.createConnection({
     port: db_config.port
 });
 
+/*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
+
+//메인화면에서 개인정보 눌렀을 경우 
+router.post('/info',function(req,res){
+    const userEmail = req.body.userEmail;
+    const sql = 'select UserName from Users where UserEmail = ?';
+
+    connection.query(sql,userEmail,function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        if(err){
+            console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "Invalid Account";
+        }else{
+            resultCode = 200;
+            message = "Load Success";
+            console.log("User main info load success");
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
 
 //내 정보 수정에서 비밀번호 변경 (현재 비밀번호 입력 후 변경 버튼 클릭 시)
-//이메일 주소 입력하면 db에서 해당하는 Owner의 OwnerSalt와 비밀번호 가져와서
-//사용자가 입력한 것에 Salt값 연산후 OwnerPwd와 비교하여 일치하는지 확인 -- By 정민
+//이메일 주소 입력하면 db에서 해당하는 User의 UserSalt와 비밀번호 가져와서
+//사용자가 입력한 것에 Salt값 연산후 UserPwd와 비교하여 일치하는지 확인 -- By 정민
 router.post('/info/checkpwd', function(req,res){
-    const ownerEmail = req.body.ownerEmail;
-    const ownerPwd = req.body.ownerPwd;
-    const sql = 'select OwnerPwd, OwnerSalt from Owners where OwnerEmail = ?';
+    const userEmail = req.body.userEmail;
+    const userPwd = req.body.userPwd;
+    const sql = 'select UserPwd, UserSalt from Users where UserEmail = ?';
 
-    connection.query(sql, ownerEmail,function(err,result){
+    connection.query(sql, userEmail,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
         if(err){
@@ -32,12 +58,13 @@ router.post('/info/checkpwd', function(req,res){
         }else if(result.length === 0){
             resultCode = 400;
             message = 'Invalid Email';    
-        }else if(result[0].OwnerPwd !== crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")){
+        }else if(result[0].UserPwd !== crypto.createHash("sha512").update(userPwd + result[0].UserSalt).digest("hex")){
             resultCode = 400;
             message = 'Wrong Password';
-        }else if(result[0].OwnerPwd === crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")){
+        }else if(result[0].UserPwd === crypto.createHash("sha512").update(userPwd + result[0].UserSalt).digest("hex")){
             resultCode = 200;
             message = 'Right Password';
+            console.log("usermain info check password success");
         }
         res.json({
             'code' : resultCode,
@@ -48,12 +75,12 @@ router.post('/info/checkpwd', function(req,res){
 
 //개인 정보 수정에서 회원 탈퇴 부분 (계정삭제하기 버튼 클릭시)
 router.post('/info/withdraw',function(req,res){
-    const ownerEmail = req.body.ownerEmail;
+    const userEmail = req.body.userEmail;
     const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
     const trashOwnerEmail = null; //탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
     const sql = 
-    'update Owners set IsOwnerDeleted = ? , OwnerEmail =? where OwnerEmail = ?';
-    const params = [ownerWithdraw, trashOwnerEmail, ownerEmail];
+    'update Owners set IsUserDeleted = ? , UserEmail =? where UserEmail = ?';
+    const params = [ownerWithdraw, trashOwnerEmail, userEmail];
 
     connection.query(sql, params,function(err,result){
         let resultCode = 500;
@@ -63,7 +90,8 @@ router.post('/info/withdraw',function(req,res){
             console.log(err);
         }else{
             resultCode = 200;
-            message = 'Account Deleted';    
+            message = 'Account Deleted';
+            console.log("user withdraw success");    
         }
         res.json({
             'code' : resultCode,
@@ -72,43 +100,34 @@ router.post('/info/withdraw',function(req,res){
     });
 });
 
-//판매 현황 확인 하는 부분 (기간 설정하고 조회버튼 클릭 시)
-router.post('/sellstatus',function(req,res){
-    const ownerEmail = req.body.ownerEmail;
-    var startDate = req.body.startDate;
-    IntStartDate = parseInt(startDate);
-    var endDate = req.body.endDate;
-    IntEndDate = parseInt(endDate);
-    const sql = 
-    'select OrderedDate ,OrderNum, json_extract(ShoppingList,\'$."count"\') as count, json_extract(ShoppingList,\'$."price"\') as price from Orders where (OwnerEmail = ? ) and (OrderedDate between date(?) and (date(?)+1)) and IsCompleted = true order by OrderedDate';
-    const params = [ ownerEmail, IntStartDate, IntEndDate];
-    var resultArray = new Array(); 
-    
-    connection.query(sql,params, function(err,result){
+//개인정보에서 주문 내역 눌렀을 경우 (지금까지 주문 했던 음식들, 주문을 해서 받았던 음식들만 포함. 현재 주문해서 기다리는 음식은 포함되지 않음)
+//sql문 = Order테이블의 UserNum이랑 같은 UserNum의 OrderNum과 메뉴이름을 뽑고, Order테이블의 OwnerEmail과 같은 Owners테이블의 Owner가게 이름을 뽑으면 됨. (IsOrderCompleted = 1인 것만)
+router.post('/info/orderRecord',function(req,res){
+    const userEmail = req.body.userEmail;
+    const sql = 'select O.OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, Owners.OwnerStoreName from Orders O LEFT OUTER JOIN Users U ON O.UserNum = U.UserNum LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 1'
+
+    connection.query(sql,userEmail,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
-        console.log(`${IntStartDate} 기간과 ${IntEndDate} 기간 사이의 판매결과를 조회합니다.`);
-        console.log(result);
+        let resultArray = new Array();
+
         if(err){
             console.log(err);
         }else if(result.length === 0){
             resultCode = 400;
-            message = "No Record Exists During Term";
+            message = "No orderRecords exist";
         }else{
-            console.log("클라이언트로 보내지는 Array 내용");
-            for(var i = 0; i < result.length; i++){
-                //쿼리 수행 결과를 한 쌍씩 object에 담고 object를 배열에 넣어줌 
+            resultCode = 200;
+            messaage = "orderRecords Load Success";
+            for (var i = 0; i < result.length; i++){
                 var resultJson = new Object();
-                //var menu = result[i].menu.substring(1,result[i].menu.indexOf("\"",1));
-                resultJson.orderedDate = result[i].OrderedDate;
-                //resultJson.menu = menu;
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.orderNum = result[i].OrderNum;
-                resultJson.count = result[i].count;
-                resultJson.price = result[i].price;
+                resultJson.ownerStoreName = result[i].OwnerStoreName;
+                resultJson.menuName = menuName;
                 resultArray.push(resultJson);
             }
-            resultCode = 200;
-            message = "Send Sell Status";
+            console.log("User info orderRecord Load success");
         }
         res.json({
             resultArray,
@@ -118,43 +137,105 @@ router.post('/sellstatus',function(req,res){
     });
 });
 
+/*----------------------------- 메인 화면에서 작동 소스코드 ----------------------------------*/
+
+//메인 화면에서 주문확인 버튼 클릭 시 (현재 qr를 찍은 매장에서 주문을 했다면, 주문확인 버튼 클릭 시 주문 내역을 보여준다.)
+//sql문 = Orders 테이블에서 해당 ownerEmail이 들어가고 userEmail로 주문이 되어있는 메뉴들의 주문날짜, 주문번호, 메뉴이름, 메뉴수량을 뽑고, 
+//        Owners에서 해당 ownerEmail을 가진 Owner의 가게이름을 넘겨준다. (Orders에서 Iscompleted = 0인것만 출력)
+router.post('/ordercheck',function(req,res){
+    const userEmail = req.body.userEmail;
+    const ownerEmail = req.body.ownerEmail;
+    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserNum = U.UserNum LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0 and O.OwnerEmail =?'
+    const params = [userEmail, ownerEmail];
+
+    connection.query(sql,params,function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        let resultArray = new Array();
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "No Order Exist";
+        }else{
+            resultCode = 200;
+            messaage = "orderCheck Load Success";
+            for (var i = 0; i < result.length; i++){
+                var resultJson = new Object();
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                resultJson.ownerStoreName = result[i].OwnerStoreName;
+                resultJson.orderedDate = result[i].OrderedDate;
+                resultJson.orderNum = result[i].OrderNum;
+                resultJson.menuName = menuName;
+                resultJson.menuCount = menuCount;
+                resultArray.push(resultJson);
+            }
+            console.log("User main ordercheck Load success");
+        }
+        res.json({
+            resultArray,
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+//메인화면에서 QR코드 스캔 버튼 누르고 qr코드 스캔시
+//sql = Menus테이블에서 Owner이메일이 QRcode의 파싱된 것과 일치하는 이메일과 일치하는 Menu들을 전부 출력 
+router.post('/qrcode/storeinfo',function(req,res){
+    const qrcodeParsing = req.body.qrcodeParsing;
+    const sql = 'select O.OwnerStoreName ,M.Menu from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ?';
+
+    connection.query(sql,qrcodeParsing, function(err,result){
+        let resultCode = 500;
+        let message ="Server Error";
+        let resultArray = new Array();
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "Not Registered Store";
+        }else{
+            for(var i = 0 ; i < result.length; i++){
+                var resultJson = new Object();
+                resultJson.ownerStoreName = result[i].OwnerStoreName;
+                resultJson.menus = result[i].Menu;
+                resultArray.push(resultJson);
+            }
+            resultCode = 200;
+            message = "Menu Load Success";
+            console.log("user load Menu success from "+ result[0].OwnerStoreName);
+        }
+        res.json({
+            resultArray,
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+
 //주문 목록확인에서 음식 준비 완료 눌렀을 때 
 router.post('/orderlist/complete', function(req,res){
     const ownerEmail = req.body.ownerEmail;
-    const userNum = req.body.userNum;
-    const orderNum = req.body.orderNum;
+    const userEmail = req.body.userEmail;
+    const shoppingList = req.body.shoppingList;
     
-    const sql = 'select UserDeviceToken from Users where userNum = ?';
+    const sql = 'insert into Orders(UserNum,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (?,?,?,now(),false)';
+    const params = [userEmail, ownerEmail, shoppingList];
 
-    connection.query(sql, userNum, function(err,result){
+    connection.query(sql, params, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
 
         if(err){
             console.log(err);
-        }else if(result.length===0){
-            resultCode = 400;
-            message = "No matching Order";
         }else{
-            updateIsCompleted(orderNum,userNum,ownerEmail);
-            let userDeviceToken = result[0].UserDeviceToken;
-            let fcmMessage = {
-                notification:{
-                    title: '오더프리',
-                    body: '주문하신 상품이 준비완료되었습니다.'
-                },
-                token : userDeviceToken
-            };
-            admin.messaging().send(fcmMessage)
-                .then((response)=>{
-                    console.log('successfully push notification',response);
-                })
-                .catch((error)=>{
-                    console.log('Error sending push notification',error);
-                });
-            
+            sendAlaramToOwner(userEmail,ownerEmail);
             resultCode = 200;
-            message = "Message Send";
+            message = "Alarm Send Success";
         }
         res.json({
             'code' : resultCode,
@@ -163,120 +244,34 @@ router.post('/orderlist/complete', function(req,res){
     });
 });
 
-function updateIsCompleted(orderNum,userNum,ownerEmail){
-    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
-    const params = [orderNum, userNum, ownerEmail];
+function sendAlaramToOwner(userEmail,ownerEmail){
+    const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
+    const params = [userEmail, ownerEmail];
 
     connection.query(sql, params, function(err,result){
         if(err){
             console.log(err);
         }else{
+            let ownerDeviceToken = result[0].OwnerDeviceToken;
+            let orderNum = result[0].OrderNum;
+            let fcmMessage = {
+                notification:{
+                    title: '오더프리',
+                    body: `${orderNum}번 주문이 들어왔습니다. \n 음식 준비를 시작해주세요!`,
+                },
+                token : ownerDeviceToken
+            };
+            admin.messaging().send(fcmMessage)
+                .then((response)=>{
+                    console.log('successfully push notification',response);
+                })
+                .catch((error)=>{
+                    console.log('Error sending push notification',error);
+                });
             console.log("IsCompleted Update success");
         }
     });
 }
-
-
-/**
- * glen 메인 화면에서 메뉴 등록 버튼 클릭시, 또는 메뉴 등록하고 나서 새로고침처럼 이동 시 
- * */
-router.post('/menu/menuList', function (req, res) {
-    const ownerEmail = req.body.ownerEmail;
-    //const menuName = req.body.menuName;
-    const sql = 
-    'select json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category from Menus where OwnerEmail = ?';
-    const params = [ownerEmail];
-
-    console.log("menuList First log...!!!");
-    console.log("menuList request : " + req);
-    connection.query(sql, params, function (err, result) {
-        console.log("Hi...!!!");
-        let resultCode = 500;
-        let message = "Server Error";
-        var result_menuList = new Array();
-
-        if (err) {
-            console.log("Error occured!!! from searching menu list!!! ERROR CONTENT : " + err);
-            return;
-        }
-        if (result.length === 0) {
-            console.log("ERROR!!! result[0] is undefined!!!");
-            return;
-        }
-        else {
-            console.log("result : ", result);
-            for (var i = 0; i < result.length; i++) {
-                var resultJson_menuList = new Object();
-                console.log("Index : " + i + "result[" + i + "]" + result[i]); 
-                //이름에서 ""파싱해서 보내는 부분 by 정민 
-                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
-                //jsonObject에 전송할 부분 담고, Array에 push 하는 부분 by 정민 
-                resultJson_menuList.menuName = menuName;
-                resultJson_menuList.category = result[i].category;
-                result_menuList.push(resultJson_menuList);
-                console.log(result_menuList[i]);
-            }
-            resultCode = 200;
-            message = "Successfully searched menu";
-        }
-        res.json({
-            result_menuList,
-            'code': resultCode,
-            'message': message
-        });  
-    });
-});
-
-/**
- * 메뉴상세보기. (메뉴 클릭했을 때)
- */
-router.post('/menu/menuSpecification', function (req, res) {
-    const ownerEmail = req.body.ownerEmail;
-    const menuName = req.body.menuName;
-    const sql = 'select json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."imgURL"\') as imgURL, json_extract(Menu,\'$."price"\') as price, json_extract(Menu,\'$."info"\') as info from Menus where OwnerEmail = ? && json_extract(Menu, \'$."menuName"\') = ?';
-    const params = [ownerEmail, menuName];
-
-    connection.query(sql, params, function (err, result) {
-        let resultCode = 500;
-        let message = "Server Error";
-        var resultMenuSpecification = new Object();
-
-        if (err) {
-            console.log("Err occured!!! from searching menu list \"eachMenu\"!!! ERROR CONTENT : " + err);
-            return;
-        }
-        if (result.length === 0) {
-            console.log("ERROR!!! result[0] is undefined!!!");
-            return;
-        }
-        else {
-            console.log("메뉴 상세보기");
-            
-            //""파싱하는 부분 by 정민 
-            var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
-            //var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
-            var info = result[0].info.substring(1,result[0].info.indexOf("\"",1));
-            //jsonObject에 전송할 부분 담는부분 by 정민 
-            resultMenuSpecification.menuName = menuName;
-            resultMenuSpecification.category = result[0].category;
-            //resultMenuSpecification.imgURL = imgURL;
-            resultMenuSpecification.price = result[0].price;
-            resultMenuSpecification.info = info;
-
-            resultCode = 200;
-            message = "Successfully searched menu(eachMenu)";
-            console.log(resultMenuSpecification);
-        }
-        res.json({
-            resultMenuSpecification,
-            'code': resultCode,
-            'message': message
-        });
-    });
-});
-
-
-
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
