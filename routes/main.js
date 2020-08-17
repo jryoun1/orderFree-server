@@ -1,5 +1,5 @@
 const mysql = require('mysql');
-const mysqlJson = require('mysql-json');
+const MysqlJson = require('mysql-json');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
@@ -20,6 +20,19 @@ const connection = mysql.createConnection({
     password: db_config.password,
     port: db_config.port
 });
+/**
+ * Glen
+ */
+const mysqlJson = new MysqlJson({
+    host: db_config.host,
+    user: db_config.user,
+    database: db_config.database,
+    password: db_config.password,
+    port: db_config.port
+});
+/**
+ * Glen
+ */
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -112,13 +125,32 @@ router.post('/menu/add', function (req, res) {
         jsonData['imgURL'] = req.body.imgURL;
         jsonData['price'] = req.body.price;
         jsonData['info'] = req.body.info;
-
-        mysqlJson.insert()
+        /*
+         // Insert new document with login=root, firstname=John, lastName=Doe, Age=45
+          mysqlJson.insert('myTable', {
+            login:'root',
+            firstName:'John',
+            lastName:'Doe',
+            age:45
+          }, function(err, response) {
+            if (err) throw err;
+            console.log(response);
+          });
+        */
+        mysqlJson.insert('Menus', {
+            OwnerEmail : ownerEmail,
+            Menu : jsonData
+        }, function(err, res) {
+            if(err) {
+                throw err;
+            }
+            console.log(res);
+        });
         //VALUES ('" + jsonData + "')"
         const sql = "insert into Menus(OwnerEmail, Menu) values(?,'" + jsonData + "')";
         const params = [ownerEmail, jsonData];
         const sql =
-            'insert into Menus(OwnerEmail, Menu) values ( ? , \{ "category" : ?, "menuName" : \'?\', "price" : ? ,"imgURL" : ?, "info" : ? }\')';
+            'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : \'?\', "price" : ? ,"imgURL" : ?, "info" : ? }\')';
         const params = [ownerEmail, category, menuName, price, imgURL, info];
         const params = [req.body.ownerEmail, req.body.category, req.body.menuName, req.body.price, req.body.imgURL, req.body.info];
         const params_glen = { ownerEmail: ownerEmail, category: category, menuName: menuName, price: price, imgURL: imgURL, info: info }
