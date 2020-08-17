@@ -138,10 +138,10 @@ router.post('/menu/add', function (req, res) {
           });
         */
         mysqlJson.insert('Menus', {
-            OwnerEmail : ownerEmail,
-            Menu : jsonData
-        }, function(err, res) {
-            if(err) {
+            OwnerEmail: ownerEmail,
+            Menu: jsonData
+        }, function (err, res) {
+            if (err) {
                 throw err;
             }
             console.log(res);
@@ -771,8 +771,5 @@ router.post('/menu/orderList/nextOrder', async function (req, res) {
 });
 */
 
-//무엇을 export할지를 결정하는것 
+//무엇을 export할지를 결정하는것
 export default router;
-
-
-
