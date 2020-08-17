@@ -1,0 +1,7 @@
+{
+    "host": "dbinstance.chmieu0lif02.ap-northeast-2.rds.amazonaws.com",
+    "user": "yeon8426",
+    "database": "example",
+    "password": "wjdals0404",
+    "port": 3306
+}

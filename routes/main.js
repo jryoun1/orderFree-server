@@ -1,45 +1,45 @@
-const mysql = require('mysql');
-const MysqlJson = require('mysql-json');
-const express = require('express');
-const router = express.Router();
-const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-const serviceAccount = require('../db-config/fcm-serviceAccountKey.json');
-const multer = require('multer');
-const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
-const multerS3 = require('multer-s3');
-const path = require('path'); //파일명 중복을 막기위해서 사용
-const AWS = require('aws-sdk');
+import { createConnection } from 'mysql';
+import MysqlJson from 'mysql-json';
+import { Router } from 'express';
+const router = Router();
+import { host as _host, user as _user, database as _database, password as _password, port as _port } from '../db-config/db-config.json'; // db 설정 정보 모듈화
+import serviceAccount from '../db-config/fcm-serviceAccountKey.json';
+import multer from 'multer';
+import { createHash } from 'crypto'; //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
+import multerS3, { AUTO_CONTENT_TYPE } from 'multer-s3';
+import { extname } from 'path'; //파일명 중복을 막기위해서 사용
+import { S3, config } from 'aws-sdk';
 const region = 'ap-northeast-2';
-const admin = require("firebase-admin");
+import { initializeApp, credential as _credential, messaging } from "firebase-admin";
 
 //mysql과의 연동 
-const connection = mysql.createConnection({
-    host: db_config.host,
-    user: db_config.user,
-    database: db_config.database,
-    password: db_config.password,
-    port: db_config.port
+const connection = createConnection({
+    host: _host,
+    user: _user,
+    database: _database,
+    password: _password,
+    port: _port
 });
 /**
  * Glen
  */
 const mysqlJson = new MysqlJson({
-    host: db_config.host,
-    user: db_config.user,
-    database: db_config.database,
-    password: db_config.password,
-    port: db_config.port
+    host: _host,
+    user: _user,
+    database: _database,
+    password: _password,
+    port: _port
 });
 /**
  * Glen
  */
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+initializeApp({
+    credential: _credential.cert(serviceAccount)
 });
 
-let s3 = new AWS.S3();
-AWS.config.loadFromPath(__dirname + '/../db-config/awsconfig.json'); // aws 인증
+let s3 = new S3();
+config.loadFromPath(__dirname + '/../db-config/awsconfig.json'); // aws 인증
 
 // multer 미들웨어 등록
 const upload = multer({
@@ -47,10 +47,10 @@ const upload = multer({
         s3: s3,
         bucket: "valueUp",
         key: function (req, file, cb) {
-            let extension = path.extname(file.originalname);
+            let extension = extname(file.originalname);
             cb(null, Date.now().toString() + extension)
         },
-        contentType: multerS3.AUTO_CONTENT_TYPE,
+        contentType: AUTO_CONTENT_TYPE,
         acl: 'public-read-write',
     }),
 });
@@ -323,10 +323,10 @@ router.post('/info/checkpwd', function (req, res) {
         } else if (result.length === 0) {
             resultCode = 400;
             message = 'Invalid Email';
-        } else if (result[0].OwnerPwd !== crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")) {
+        } else if (result[0].OwnerPwd !== createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")) {
             resultCode = 400;
             message = 'Wrong Password';
-        } else if (result[0].OwnerPwd === crypto.createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")) {
+        } else if (result[0].OwnerPwd === createHash("sha512").update(ownerPwd + result[0].OwnerSalt).digest("hex")) {
             resultCode = 200;
             message = 'Right Password';
         }
@@ -435,7 +435,7 @@ router.post('/orderlist/complete', function (req, res) {
                 },
                 token: userDeviceToken
             };
-            admin.messaging().send(fcmMessage)
+            messaging().send(fcmMessage)
                 .then((response) => {
                     console.log('successfully push notification', response);
                 })
@@ -772,7 +772,7 @@ router.post('/menu/orderList/nextOrder', async function (req, res) {
 */
 
 //무엇을 export할지를 결정하는것 
-module.exports = router;
+export default router;
 
 
 
