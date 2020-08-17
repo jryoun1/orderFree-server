@@ -26,6 +26,7 @@ admin.initializeApp({
 
 let s3 = new AWS.S3();
 AWS.config.loadFromPath(__dirname + '/../db-config/awsconfig.json'); // aws 인증
+
 // multer 미들웨어 등록
 const upload = multer({
     storage: multerS3({
@@ -40,13 +41,6 @@ const upload = multer({
     }),
 });
 
-//사진을 보냈을 때 받아서 s3로 저장하는부분??
-//router.post('menu/add',upload.single("imgFile"),function(req,res,next){
-//    console.log(req.file);
-//    let url = req.location;
-//    console.log(url);
-//});
-
 //메뉴 등록 및 수정하는 부분 (메뉴 등록 버튼 누를 때)
 router.post('/menu/add',function(req,res){
     const ownerEmail = req.body.ownerEmail;
@@ -56,18 +50,21 @@ router.post('/menu/add',function(req,res){
     var price = req.body.price;
     var info = req.body.info;
     var decisionNum = req.body.decisionNum;
+    let resultCode = 500;
+    let message = "Server Error";
+    console.log(menuName);
+    console.log(info + imgURL);
     
     if(decisionNum === 1){ //항목추가로 메뉴를 생성하는 경우 
         const sql = 
         'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : ?, "price" : ? ,"imgURL" : ?, "info" : ? }\')';
-        const params = [ownerEmail,category,menuName, price, imgURL,info];
+        const params = [ownerEmail,category,menuName, price, imgURL, info];
 
         connection.query(sql, params, function(err, result){
-            let resultCode = 500;
-            let message = "Server Error";
             if(err){
                 console.log(err);
             }else{
+                console.log("Menu Register Success");
                 resultCode = 201;
                 message = "Menu Registered";
             }
@@ -79,11 +76,10 @@ router.post('/menu/add',function(req,res){
         const params = [menuName,category, imgURL, price, info, ownerEmail, menuOriginalName];
 
         connection.query(sql, params, function(err, result){
-            let resultCode = 500;
-            let message = "Server Error";
             if(err){
                 console.log(err);
             }else{
+                console.log("Menu Modified Success");
                 resultCode = 200;
                 message = "Menu Modified";
             }
@@ -320,12 +316,11 @@ router.post('/sellstatus',function(req,res){
 //주문 목록확인에서 음식 준비 완료 눌렀을 때 
 router.post('/orderlist/complete', function(req,res){
     const ownerEmail = req.body.ownerEmail;
-    const userNum = req.body.userNum;
     const orderNum = req.body.orderNum;
     
-    const sql = 'select UserDeviceToken from Users where userNum = ?';
+    const sql = 'select U.UserDeviceToken from Users U LEFT OUTER JOIN Orders O ON O.UserEmail = U.UserEmail where O.OrderNum = ?';
 
-    connection.query(sql, userNum, function(err,result){
+    connection.query(sql, orderNum, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
 
@@ -335,7 +330,7 @@ router.post('/orderlist/complete', function(req,res){
             resultCode = 400;
             message = "No matching Order";
         }else{
-            updateIsCompleted(orderNum,userNum,ownerEmail);
+            updateIsCompleted(orderNum,ownerEmail);
             let userDeviceToken = result[0].UserDeviceToken;
             let fcmMessage = {
                 notification:{
@@ -362,9 +357,9 @@ router.post('/orderlist/complete', function(req,res){
     });
 });
 
-function updateIsCompleted(orderNum,userNum,ownerEmail){
-    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and UserNum = ? and OwnerEmail = ?';
-    const params = [orderNum, userNum, ownerEmail];
+function updateIsCompleted(orderNum,ownerEmail){
+    const sql = 'update Orders set IsCompleted = true where OrderNum = ? and OwnerEmail = ?';
+    const params = [orderNum,ownerEmail];
 
     connection.query(sql, params, function(err,result){
         if(err){
@@ -498,7 +493,6 @@ router.post('/menu/orderedList', function (req, res) {
             console.log("result : ", result);
             for (var i = 0; i < result.length; i++) {
                 var resultJson_orderedList = new Object();
-                console.log("Index : " + i + "result[" + i + "]" + result[i]);
                 resultJson_orderedList = result[i]
                 orderedList.push(resultJson_orderedList)
             }
@@ -516,13 +510,13 @@ router.post('/menu/orderedList', function (req, res) {
 router.post('/menu/orderedListSpecification', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menu, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
+    const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
     const params = [ownerEmail, orderNum];
 
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
         let message = "Server Error";
-        let resultJson = new JSON();
+        let resultArray = new Array();
 
         if (err) {
             console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "ERROR CONTENT : " + err);
@@ -533,25 +527,35 @@ router.post('/menu/orderedListSpecification', function (req, res) {
             return;
         }
         else {
+            for(var i = 0; i< result.length; i++){
+                var resultJson = new Object();
+                var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
+                resultJson.orderNum = result[i].OrderNum;
+                resultJson.menuName = menuName;
+                resultJson.count = result[i].count;
+                resultArray.push(resultJson);
+            }
             console.log("result : ", result);
-            resultJson = result[0];
             resultCode = 200;
             message = "Successfully searched orderedList(eachOrder)";
         }
         res.json({
-            resultJson,
+            resultArray,
             'code': resultCode,
             'message': message
         });
     });
 });
 
+/*
 router.post('/menu/orderList/previousOrder', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const userNum = req.body.userNum;
     var previouseOrderNum = orderNum;
     var isSearched = false;
+    var resultArray = new Array();
+    let resultCode = 500;
+    let message = "Server Error";
 
     for (var index = 0; index < orderNum; index++) {
         if (previouseOrderNum === 0 && !isSearched) {
@@ -564,102 +568,112 @@ router.post('/menu/orderList/previousOrder', function (req, res) {
         }// Async 처리 가능하도록 하기.
         else {
             previouseOrderNum = previouseOrderNum - 1;
-            const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
-            const params = [ownerEmail, previouseOrderNum, userNum];
-        }
+            const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ? and IsCompleted = false';
+            const params = [ownerEmail, previouseOrderNum];
 
-        connection.query(sql, params, function (err, result) {
-            let resultCode = 500;
-            let message = "Server Error";
-            var result_orderedList_previousOrder = new JSON();
-
-            if (err) {
-                console.log("Err occured!!! from searching Ordered List(Previous Order)!!!, variable ownerEmail = " + ownerEamil + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
-                return;
-            }
-            if (result[0] == undefined) {
-                console.log("ERROR!!! result[0] is undefined!!!");
-                return;
-            }
-            else {
-                isSearched = true
-                console.log("result : ", result);
-                result_orderedList_previousOrder = result;
-                resultCode = 200;
-                message = "Successfully searched Previous order list";
-            }
-            res.json({
-                result_orderedList_previousOrder,
-                'code': resultCode,
-                'message': message
+            connection.query(sql, params, function (err, result) {              
+                if (err) {
+                    console.log("Err occured!!! from searching Ordered List(Previous Order)!!!, variable ownerEmail = " + ownerEamil + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
+                    return;
+                }
+                if (result[0] === undefined) {
+                    console.log("Searching Previous Ordered Menu ...");
+                    return;
+                }
+                else {
+                    isSearched = true
+                    console.log("Previous Order Load Success");
+                    for(var i = 0; i < result.length; i++){
+                        var resultJson = new Object();
+                        var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
+                        resultJson.orderNum = result[i].OrderNum;
+                        resultJson.menuName = menuName;
+                        resultJson.count = result[i].count;
+                        resultArray.push(resultJson);
+                    }
+                    resultCode = 200;
+                    message = "Successfully searched Previous order list";
+                }
             });
-        });
+        }
     }
+    res.json({
+        resultArray,
+        'code': resultCode,
+        'message': message
+    });
     // const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
     // const params = [ownerEmail, orderNum, userNum];
-
-
 });
+*/
 
-/**
- * 
- */
-router.post('/menu/orderList/nextOrder', function (req, res) {
+/*
+router.post('/menu/orderList/nextOrder', async function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const userNum = req.body.userNum;
     var nextOrderNum = orderNum
     var isSearched = false;
+    var resultArray = new Array();
+    let resultCode = 500;
+    let message = "Server Error";
 
     for (var index = 0; index < orderNum; index++) {
-        if (nextOrderNum === 0 && !isSearched) { // Error Handling.
+        console.log('1') //
+        if (isSearched) { // Error Handling.
+            console.log('2') //
             console.log("Next Order Is NOT exist!!!")
             res.json({
                 'code': 500,
                 'message': "Next Order Is NOT exist"
-            })
-            return
+            });
+            return;
         }
         else {
-            isSearched = true
-            nextOrderNum = nextOrderNum + 1
-            const sql = 'select * from Orders where OwnerEmail = ? and OrderNum = ? and UserNum = ?';
-            const params = [ownerEmail, nextOrderNum, userNum];
-        }
-
-        connection.query(sql, params, function (err, result) {
-            let resultCode = 500;
-            let message = "Server Error";
-            var result_orderedList_nextOrder = new JSON();
-
-            if (err) {
-                console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEamil + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
-                return
-            }
-            if (result.length === 0) {
-                console.log("ERROR!!! result[0] is undefined!!!");
-                return
-            }
-            else {
-                console.log("result : ", result);
-                result_orderedList_nextOrder = result;
-                resultCode = 200;
-                message = "Successfully searched Next order list";
-            }
-            res.json({
-                result_orderedList_nextOrder,
-                'code': resultCode,
-                'message': message
+            nextOrderNum = nextOrderNum + 1;
+            const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ? and IsCompleted = false';
+            const params = [ownerEmail, nextOrderNum];
+            console.log('3 nextOrderNum' + nextOrderNum) //
+            await connection.query(sql, params, function (err, result) {
+                if (err) {
+                    console.log('4') //
+                    console.log("Err occured!!! from searching Ordered List!!!, variable ownerEmail = " + ownerEmail + "variable orderNum = " + orderNum + "ERROR CONTENT : " + err);
+                    return
+                }
+                if (result.length === 0) {
+                    console.log('5') //
+                    console.log("Searching Next Ordered Menu ...");
+                    return
+                }
+                else {
+                    console.log('6') //
+                    isSearched = true;
+                    //console.log("Next Order Load Success");
+                    console.log('reuslt length :' + result.length);
+                    for(var i = 0; i < result.length; i++){
+                        console.log("for loop. Index i : " + i) //
+                        var resultJson = new Object();
+                        var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
+                        resultJson.orderNum = result[i].OrderNum;
+                        resultJson.menuName = menuName;
+                        resultJson.count = result[i].count;
+                        resultArray.push(resultJson);
+                        console.log(resultJson);
+                        console.log(resultArray);
+                    }
+                    console.log('for loop end. result array : ');
+                    resultCode = 200;
+                    message = "Successfully searched Next order list";
+                }
             });
-        });
-
-        if (result.IsCompleted == true) {
-            isSearched = false
-            continue
         }
     }
+    res.json({
+        resultArray,
+        'code': resultCode,
+        'message': message
+    });
 });
-/** */
+*/
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
