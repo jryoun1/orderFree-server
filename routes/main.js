@@ -1,5 +1,6 @@
 import { createConnection } from 'mysql';
-import { MysqlJson } from 'mysql-json';
+const MysqlJson = require('mysql-json');
+//import { MysqlJson } from 'mysql-json';
 import { Router } from 'express';
 const router = Router();
 import { host as _host, user as _user, database as _database, password as _password, port as _port } from '../db-config/db-config.json'; // db 설정 정보 모듈화
