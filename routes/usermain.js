@@ -2,9 +2,9 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-const serviceAccount = require('../db-config/fcm-serviceAccountKey.json');
+const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json');
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
-const admin = require("firebase-admin");
+const admin2 = require("firebase-admin");
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -14,6 +14,10 @@ const connection = mysql.createConnection({
     password: db_config.password,
     port: db_config.port
 });
+
+admin2.initializeApp({
+    credential: admin2.credential.cert(serviceAccount)
+  },"other");
 
 /*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
 

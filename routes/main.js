@@ -52,13 +52,22 @@ router.post('/menu/add',function(req,res){
     var decisionNum = req.body.decisionNum;
     let resultCode = 500;
     let message = "Server Error";
-    console.log(menuName);
-    console.log(info + imgURL);
-    
+
+    var Menu = new Object();
+    Menu = {
+        'menuName' : menuName,
+        'category' :category,
+        'price' : price,
+        'imgURL' : imgURL,
+        'info' : info
+    }
+    Menu = JSON.stringify(Menu)
+    console.log(Menu);
     if(decisionNum === 1){ //항목추가로 메뉴를 생성하는 경우 
-        const sql = 
-        'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : ?, "menuName" : ?, "price" : ? ,"imgURL" : ?, "info" : ? }\')';
-        const params = [ownerEmail,category,menuName, price, imgURL, info];
+        const sql = 'insert into Menus(OwnerEmail, Menu) values ( ? ,  ? )';
+        //'insert into Menus(OwnerEmail, Menu) values ( ? , \'{ "category" : "\'?" , "menuName" : ? , "price" : ? ,"imgURL" : ? , "info" : ? }\')';
+        //const params = [ownerEmail,category, menuName, price, imgURL, info];
+        const params = [ownerEmail, Menu];
 
         connection.query(sql, params, function(err, result){
             if(err){
@@ -163,10 +172,14 @@ router.post('/info/registore',function(req,res){
     const sql = 
     'update Owners set OwnerStoreName = ? , OwnerStoreAddress = ? where OwnerEmail = ?';
     const params = [ownerStoreName,ownerStoreAddress,ownerEmail];
+    
+    console.log(ownerEmail, ownerStoreAddress, ownerStoreName);
 
     connection.query(sql, params,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
+
+        console.log("hi");
 
         if(err){
             console.log(err);
@@ -174,6 +187,7 @@ router.post('/info/registore',function(req,res){
             resultCode = 400;
             message = 'Invalid Account';
         }else{
+            console.log("here");
             resultCode = 201;
             message = 'Store Registered';    
         }

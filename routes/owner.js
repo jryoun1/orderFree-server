@@ -97,6 +97,7 @@ router.post('/join/emailcheck', function (req, res) {
 router.post('/login', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const ownerPwd = req.body.ownerPwd;
+    var ownerDeviceToken = req.body.ownerDeviceToken;
     const sql = 'select * from Owners where OwnerEmail = ?';
 
     //sql문의 ?는 두번째 파라미터 ownerEmail로 치환된다.
@@ -117,6 +118,7 @@ router.post('/login', function (req, res) {
             } else { //ownerEmail과 ownerPwd가 모두 일치하는 경우
                 resultCode = 201;
                 message = 'Login Success';
+                ownerDeviceTokenInsertDB(ownerDeviceToken, ownerEmail);
                 var ownerName = result[0].OwnerName;
             }
         }
@@ -127,6 +129,19 @@ router.post('/login', function (req, res) {
         });
     })
 });
+
+function ownerDeviceTokenInsertDB(ownerDeviceToken, ownerEmail){
+    const sql = 'update Owners set OwnerDeviceToken = ? where OwnerEmail = ?';
+    const params = [ ownerDeviceToken, ownerEmail];
+    
+    connection.query(sql, params, function(err,result){
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`${ownerEmail} ownerDeviceToken update success!!`);
+        }
+    })
+}
 
 //이름과 전화번호로 이메일 찾는 부분
 router.post('/login/emailfind', function (req, res) {
