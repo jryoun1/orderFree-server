@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { createConnection } from 'mysql';
 import { Router } from 'express';
 const router = Router();
@@ -5,6 +6,15 @@ import { host as _host, user as _user, database as _database, password as _passw
 import serviceAccount from '../db-config/fcm-serviceAccountKey.json';
 import { createHash } from 'crypto'; //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 import { messaging } from "firebase-admin";
+=======
+const mysql = require('mysql');
+const express = require('express');
+const router = express.Router();
+const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json');
+const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
+const admin2 = require("firebase-admin");
+>>>>>>> ed6a0dd5d8d50f47ce18d3648a284463644f0897
 
 //mysql과의 연동 
 const connection = createConnection({
@@ -14,6 +24,10 @@ const connection = createConnection({
     password: _password,
     port: _port
 });
+
+admin2.initializeApp({
+    credential: admin2.credential.cert(serviceAccount)
+  },"other");
 
 /*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
 
