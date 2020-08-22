@@ -485,6 +485,7 @@ router.post('/menu/orderedList', function (req, res) {
     const sql = 'select OrderNum from Orders where OwnerEmail = ?';
     const params = [ownerEmail];
     console.log("before query");
+    console.log(ownerEmail);
     
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
@@ -538,18 +539,27 @@ router.post('/menu/orderedListSpecification', function (req, res) {
             return;
         }
         else {
-            for(var i = 0; i< result.length; i++){
-                //정민 수정 메뉴 여러개 들어와도 할 수 있도록 수정했는데 테스트 후 변경할 지 기존의 코드로 갈지 결정해야댐
-                for(var j = 0; j< result[i].menuName[i].length; j++){
+                //menuName에 대한 부분 파싱해주는 부분 
+                var name_remove = result[0].menuName.substring(1,result[0].menuName.length-1);
+                var name_remove1 = name_remove.replace(/\"/gi,"");
+                var name_remove1 = name_remove1.replace(/ /gi,"");
+                var name_list = name_remove1.split(",");
+
+                //count에 대한 부분 파싱 해주는 부분 
+                var count_remove = result[0].count.substring(1,result[0].count.length-1);
+                var count_remove1 = count_remove.replace(/\"/gi,"");
+                var count_remove1 = count_remove1.replace(/ /gi,"");
+                var count_list = count_remove1.split(",");
+
+                for(var i = 0; i < name_list.length; i++){
                     var resultJson = new Object();
-                    var menuName = result[j].menuName[j].substring(1,result[j].menuName[j].indexOf("\"",1));
-                    resultJson.orderNum = result[j].OrderNum;
-                    resultJson.menuName = menuName;
-                    resultJson.count = result[j].count[j];
+                    resultJson.orderNum = result[0].OrderNum;
+                    resultJson.menuName = name_list[i];
+                    //숫자같은 경우에는 문자열에서 숫자료 형변환해서 보내준다.
+                    resultJson.count = parseInt(count_list[i]);
                     resultArray.push(resultJson);
                     console.log("result : ", resultJson);
                 }
-            }
             resultCode = 200;
             message = "Successfully searched orderedList(eachOrder)";
         }

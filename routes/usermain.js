@@ -201,9 +201,9 @@ router.post('/qrcode/storeinfo',function(req,res){
         }else{
             for(var i = 0 ; i < result.length; i++){
                 var resultJson = new Object();
-                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                //var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.ownerStoreName = result[i].OwnerStoreName;
-                resultJson.menuName = menuName;
+                resultJson.menuName = result[i].menuName;
                 resultJson.category = result[i].category;
                 resultJson.price = result[i].price;
                 resultArray.push(resultJson);
