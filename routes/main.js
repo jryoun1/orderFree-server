@@ -98,7 +98,6 @@ router.post('/menu/add',function(req,res){
         'code' : resultCode,
         'message' : message
     });
-    
 });
 
 //메뉴 정렬해서 보기 (분류별 정렬을 고르고 적용버튼 클릭시)
@@ -179,15 +178,13 @@ router.post('/info/registore',function(req,res){
         let resultCode = 500;
         let message = "Server Error";
 
-        console.log("hi");
-
         if(err){
             console.log(err);
         }else if(result.length===0){
             resultCode = 400;
             message = 'Invalid Account';
         }else{
-            console.log("here");
+            console.log(`Owner Store ${ownerStoreName} has been registered address as ${ownerStoreAddress}`);
             resultCode = 201;
             message = 'Store Registered';    
         }
@@ -462,12 +459,12 @@ router.post('/menu/menuSpecification', function (req, res) {
             
             //""파싱하는 부분 by 정민 
             var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
-            //var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
+            var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
             var info = result[0].info.substring(1,result[0].info.indexOf("\"",1));
             //jsonObject에 전송할 부분 담는부분 by 정민 
             resultMenuSpecification.menuName = menuName;
             resultMenuSpecification.category = result[0].category;
-            //resultMenuSpecification.imgURL = imgURL;
+            resultMenuSpecification.imgURL = imgURL;
             resultMenuSpecification.price = result[0].price;
             resultMenuSpecification.info = info;
 
@@ -524,7 +521,7 @@ router.post('/menu/orderedList', function (req, res) {
 router.post('/menu/orderedListSpecification', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const sql = 'select OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
+    const sql = 'select OrderNum, json_extract(ShoppingList,\'$[*]."menu"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
     const params = [ownerEmail, orderNum];
 
     connection.query(sql, params, function (err, result) {
@@ -542,14 +539,17 @@ router.post('/menu/orderedListSpecification', function (req, res) {
         }
         else {
             for(var i = 0; i< result.length; i++){
-                var resultJson = new Object();
-                var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
-                resultJson.orderNum = result[i].OrderNum;
-                resultJson.menuName = menuName;
-                resultJson.count = result[i].count;
-                resultArray.push(resultJson);
+                //정민 수정 메뉴 여러개 들어와도 할 수 있도록 수정했는데 테스트 후 변경할 지 기존의 코드로 갈지 결정해야댐
+                for(var j = 0; j< result[i].menuName[i].length; j++){
+                    var resultJson = new Object();
+                    var menuName = result[j].menuName[j].substring(1,result[j].menuName[j].indexOf("\"",1));
+                    resultJson.orderNum = result[j].OrderNum;
+                    resultJson.menuName = menuName;
+                    resultJson.count = result[j].count[j];
+                    resultArray.push(resultJson);
+                    console.log("result : ", resultJson);
+                }
             }
-            console.log("result : ", result);
             resultCode = 200;
             message = "Successfully searched orderedList(eachOrder)";
         }

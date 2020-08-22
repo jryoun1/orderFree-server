@@ -148,15 +148,13 @@ router.post('/info/orderRecord',function(req,res){
 //        Owners에서 해당 ownerEmail을 가진 Owner의 가게이름을 넘겨준다. (Orders에서 Iscompleted = 0인것만 출력)
 router.post('/ordercheck',function(req,res){
     const userEmail = req.body.userEmail;
-    const ownerEmail = req.body.ownerEmail;
-    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserNum = U.UserNum LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0 and O.OwnerEmail =?'
-    const params = [userEmail, ownerEmail];
+    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$[*]."menu"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserEmail = U.UserEmail LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0'
+    const params = [userEmail];
 
     connection.query(sql,params,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
         let resultArray = new Array();
-
         if(err){
             console.log(err);
         }else if(result.length === 0){
@@ -189,13 +187,12 @@ router.post('/ordercheck',function(req,res){
 //sql = Menus테이블에서 Owner이메일이 QRcode의 파싱된 것과 일치하는 이메일과 일치하는 Menu들을 전부 출력 
 router.post('/qrcode/storeinfo',function(req,res){
     const qrcodeParsing = req.body.qrcodeParsing;
-    const sql = 'select O.OwnerStoreName ,M.Menu from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ?';
+    const sql = 'select O.OwnerStoreName, json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."price"\') as price from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ?';
 
     connection.query(sql,qrcodeParsing, function(err,result){
         let resultCode = 500;
         let message ="Server Error";
         let resultArray = new Array();
-
         if(err){
             console.log(err);
         }else if(result.length === 0){
@@ -204,9 +201,13 @@ router.post('/qrcode/storeinfo',function(req,res){
         }else{
             for(var i = 0 ; i < result.length; i++){
                 var resultJson = new Object();
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.ownerStoreName = result[i].OwnerStoreName;
-                resultJson.menus = result[i].Menu;
+                resultJson.menuName = menuName;
+                resultJson.category = result[i].category;
+                resultJson.price = result[i].price;
                 resultArray.push(resultJson);
+                console.log(resultJson);
             }
             resultCode = 200;
             message = "Menu Load Success";
@@ -220,26 +221,85 @@ router.post('/qrcode/storeinfo',function(req,res){
     });
 });
 
+// 메뉴들 목록에서 메뉴 클릭시 메뉴 상세 정보 출력 
 
-//주문 목록확인에서 음식 준비 완료 눌렀을 때 
-router.post('/orderlist/complete', function(req,res){
-    const ownerEmail = req.body.ownerEmail;
+router.post('/store/menuSpecification', function (req, res) {
+    const ownerStoreName = req.body.ownerStoreName;
+    const menuName = req.body.menuName;
+    const sql = 'select json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."imgURL"\') as imgURL, json_extract(Menu,\'$."price"\') as price, json_extract(Menu,\'$."info"\') as info from Menus LEFT OUTER JOIN Owners O ON O.OwnerEmail = Menus.OwnerEmail where O.OwnerStoreName = ? && json_extract(Menu, \'$."menuName"\') = ?';
+    const params = [ownerStoreName, menuName];
+
+    connection.query(sql, params, function (err, result) {
+        let resultCode = 500;
+        let message = "Server Error";
+        var resultMenuSpecification = new Object();
+
+        if (err) {
+            console.log("Err occured!!! from searching menu list \"eachMenu\"!!! ERROR CONTENT : " + err);
+            return;
+        }else if (result.length === 0) {
+            console.log("ERROR!!! result[0] is undefined!!!");
+            return;
+        }else {
+            console.log("메뉴 상세보기");
+            var menuName = result[0].menuName.substring(1,result[0].menuName.indexOf("\"",1));
+            var imgURL = result[0].imgURL.substring(1,result[0].imgURL.indexOf("\"",1));
+            var info = result[0].info.substring(1,result[0].info.indexOf("\"",1));
+            resultMenuSpecification.menuName = menuName;
+            resultMenuSpecification.category = result[0].category;
+            resultMenuSpecification.imgURL = imgURL;
+            resultMenuSpecification.price = result[0].price;
+            resultMenuSpecification.info = info;
+
+            resultCode = 200;
+            message = "Successfully searched menu(eachMenu)";
+            console.log(resultMenuSpecification);
+        }
+        res.json({
+            resultMenuSpecification,
+            'code': resultCode,
+            'message': message
+        });
+    });
+});
+
+
+// 장바구니에서 결제 완료 눌렀을때 
+router.post('/confirmOrder', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
     const userEmail = req.body.userEmail;
-    const shoppingList = req.body.shoppingList;
     
-    const sql = 'insert into Orders(UserNum,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (?,?,?,now(),false)';
-    const params = [userEmail, ownerEmail, shoppingList];
+    const sql = 
+    'select O.OwnerEmail, json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
+    const params = [userEmail, ownerStoreName];
 
     connection.query(sql, params, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
+        let resultArray = new Array();
+        const ownerEmail = result[0].OwnerEmail;
 
         if(err){
             console.log(err);
+        }else if(result.length === 0){
+            resultCode = 400;
+            message = "Can't order!"
+            console.log("order error from user confirmOrder");
         }else{
+            for(var i = 0; i < result.length; i++){
+                var resultJson = new Object();
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                resultJson.menuName = menuName;
+                resultJson.price = result[i].price
+                resultJson.count = result[i].count;
+                resultArray.push(resultJson);
+                console.log(resultJson + "from confirmOrder");
+            }
+            updateOrderTable(userEmail,ownerEmail,resultArray);
             sendAlaramToOwner(userEmail,ownerEmail);
+            deleteShoppingList(userEmail,ownerStoreName);
             resultCode = 200;
-            message = "Alarm Send Success";
+            message = "Order Success";
         }
         res.json({
             'code' : resultCode,
@@ -247,6 +307,19 @@ router.post('/orderlist/complete', function(req,res){
         });
     });
 });
+
+function updateOrderTable(userEmail,ownerEmail,resultArray){
+    const sql = 'insert into Orders(UserEmail,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (? ,? , ?, now(), false)';
+    const params = [userEmail, ownerEmail,resultArray];
+
+    connection.query(sql, params, function(err,result){
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`${userEmail} Ordertable update Success`);
+        }
+    });
+}
 
 function sendAlaramToOwner(userEmail,ownerEmail){
     const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
@@ -276,6 +349,94 @@ function sendAlaramToOwner(userEmail,ownerEmail){
         }
     });
 }
+
+function deleteShoppingList(userEmail,ownerStoreName){
+    const sql = 'delete from ShoppingList where UserEmail = ? and OwnerStoreName = ?';
+    const params = [userEmail, ownerStoreName];
+
+    connection.query(sql, params, function(err,result){
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`${userEmail} shoppingList delete success`);
+        }
+    });
+}
+
+//-------------------- 메뉴목록에서 메뉴 클릭 후 수량 선택 후 담기 버튼 클릭 시 -------------------------------- 
+router.post('/store/addshoppingList', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    const menuName = req.body.menuName;
+    const price = req.body.price;
+    const count = req.body.count;
+
+    var List = new Object();
+    List = {
+        'menuName' : menuName,
+        'price' : price,
+        'count' : count
+    }
+    List = JSON.stringify(List)
+    
+    const sql = 'insert into ShoppingList values (? ,?, ?)';
+    const params = [userEmail, ownerStoreName, List];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`menu ${menuName} has been add to shoppingList`);
+            resultCode = 200;
+            message = "Menu Add to ShoppingList";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+//-------------------- 장바구니 버튼 클릭 시 -------------------------------- 
+router.post('/store/shoppingList', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    
+    const sql = 
+    'select json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
+    const params = [userEmail, ownerStoreName];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        let resultArray = new Array();
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0) {
+            resultCode = 400;
+            message = "No Shopping List Exist" 
+        }else{
+            for (var i = 0; i < result.length; i++) {
+                var resultJson = new Object();
+                resultJson.menuName = result[i].menuName;
+                resultJson.price = result[i].price;
+                resultJson.count = result[i].count;
+                resultArray.push(resultJson)
+                console.log(`${userEmail}'s ShoppingList ${resultJson}`);
+            }
+            resultCode = 200;
+            message = "ShoppingList Load Success";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
