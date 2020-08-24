@@ -1,10 +1,12 @@
 const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
-const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json');
-const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 const admin2 = require("firebase-admin");
+const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
+
+//파일 내 설정 정보들을 보호하기 위해서 따로 파일에 만들어 놓음
+const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json'); //fcm notification 서비스를 위한 설정 정보
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -15,12 +17,14 @@ const connection = mysql.createConnection({
     port: db_config.port
 });
 
+//fcm 서비스를 other이란 이름으로 initialize
+//이미 ownermain에서 default로 fcm-service 에 대해서 initialize를 했기 때문에 다른 이름인 other로 init
 admin2.initializeApp({
     credential: admin2.credential.cert(serviceAccount)
   },"other");
 
-/*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
 
+/*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
 //메인화면에서 개인정보 눌렀을 경우 
 router.post('/info',function(req,res){
     const userEmail = req.body.userEmail;
@@ -141,7 +145,7 @@ router.post('/info/orderRecord',function(req,res){
     });
 });
 
-/*----------------------------- 메인 화면에서 작동 소스코드 ----------------------------------*/
+/*----------------------------- 메인 화면에서 주문 확인 관련 소스 코드 ------------------------------*/
 
 //메인 화면에서 주문확인 버튼 클릭 시 (현재 qr를 찍은 매장에서 주문을 했다면, 주문확인 버튼 클릭 시 주문 내역을 보여준다.)
 //sql문 = Orders 테이블에서 해당 ownerEmail이 들어가고 userEmail로 주문이 되어있는 메뉴들의 주문날짜, 주문번호, 메뉴이름, 메뉴수량을 뽑고, 
@@ -183,6 +187,8 @@ router.post('/ordercheck',function(req,res){
     });
 });
 
+/*----------------------------- 메인 화면에서 qr코드 관련 소스코드 ----------------------------------*/
+
 //메인화면에서 QR코드 스캔 버튼 누르고 qr코드 스캔시
 //sql = Menus테이블에서 Owner이메일이 QRcode의 파싱된 것과 일치하는 이메일과 일치하는 Menu들을 전부 출력 
 router.post('/qrcode/storeinfo',function(req,res){
@@ -201,9 +207,10 @@ router.post('/qrcode/storeinfo',function(req,res){
         }else{
             for(var i = 0 ; i < result.length; i++){
                 var resultJson = new Object();
-                //var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.ownerStoreName = result[i].OwnerStoreName;
-                resultJson.menuName = result[i].menuName;
+                //resultJson.menuName = result[i].menuName;
+                resultJson.menuName = menuName;
                 resultJson.category = result[i].category;
                 resultJson.price = result[i].price;
                 resultArray.push(resultJson);
@@ -221,8 +228,8 @@ router.post('/qrcode/storeinfo',function(req,res){
     });
 });
 
-// 메뉴들 목록에서 메뉴 클릭시 메뉴 상세 정보 출력 
-
+// qr코드 인식 후 받아온 메뉴 목록에서 
+// 특정 메뉴 클릭시 해당 메뉴 상세 정보 출력 
 router.post('/store/menuSpecification', function (req, res) {
     const ownerStoreName = req.body.ownerStoreName;
     const menuName = req.body.menuName;
@@ -263,8 +270,89 @@ router.post('/store/menuSpecification', function (req, res) {
     });
 });
 
+//-------------------- 메뉴목록에서 장바구니와 관련된 소스 코드들 --------------------------*/
 
-// 장바구니에서 결제 완료 눌렀을때 
+// 메뉴 상세 목록에서 수량을 선택한 뒤 담기 버튼을 클릭할 시 
+// 해당 메뉴가 ShoppingList db table에 데이터로 저장된다.
+router.post('/store/addshoppingList', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    const menuName = req.body.menuName;
+    const price = req.body.price;
+    const count = req.body.count;
+
+    var List = new Object();
+    List = {
+        'menuName' : menuName,
+        'price' : price,
+        'count' : count
+    }
+    List = JSON.stringify(List)
+    
+    const sql = 'insert into ShoppingList values (? ,?, ?)';
+    const params = [userEmail, ownerStoreName, List];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`menu ${menuName} has been add to shoppingList`);
+            resultCode = 200;
+            message = "Menu Add to ShoppingList";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+// 메뉴 목록화면에서 장바구니 버튼을 클릭 시
+// 해당 user로 부터 ShoppingList db table에 데이터가 있다면 해당 데이터들을 불러와서 보여준다.
+router.post('/store/shoppingList', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    
+    const sql = 
+    'select json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
+    const params = [userEmail, ownerStoreName];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        let resultArray = new Array();
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0) {
+            resultCode = 400;
+            message = "No Shopping List Exist" 
+        }else{
+            for (var i = 0; i < result.length; i++) {
+                var resultJson = new Object();
+                resultJson.menuName = result[i].menuName;
+                resultJson.price = result[i].price;
+                resultJson.count = result[i].count;
+                resultArray.push(resultJson)
+                console.log(`${userEmail}'s ShoppingList ${resultJson}`);
+            }
+            resultCode = 200;
+            message = "ShoppingList Load Success";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+// 장바구니 화면에서 결제 완료 눌렀을때 
+// ShoppingList db table에서 해당 user의 데이터는 사라지게 되고
+// Orders db table에 해당 가게 점수, userEmail, shoppingList가 들어가게 된다.
+// 또한 Ownerapp 사용자의 휴대폰으로 주문이 들어왔다는 fcm notification이 가게 된다. 
 router.post('/confirmOrder', function(req,res){
     const ownerStoreName = req.body.ownerStoreName;
     const userEmail = req.body.userEmail;
@@ -308,6 +396,7 @@ router.post('/confirmOrder', function(req,res){
     });
 });
 
+// Orders db table에 해당 데이터를 넣어주는 함수
 function updateOrderTable(userEmail,ownerEmail,resultArray){
     const sql = 'insert into Orders(UserEmail,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (? ,? , ?, now(), false)';
     const params = [userEmail, ownerEmail,resultArray];
@@ -321,6 +410,7 @@ function updateOrderTable(userEmail,ownerEmail,resultArray){
     });
 }
 
+// User 휴대폰으로 fcm notification 을 보내주는 함수 
 function sendAlaramToOwner(userEmail,ownerEmail){
     const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
     const params = [userEmail, ownerEmail];
@@ -350,6 +440,7 @@ function sendAlaramToOwner(userEmail,ownerEmail){
     });
 }
 
+// ShoppingList db table에서 데이터를 삭제해주는 함수 
 function deleteShoppingList(userEmail,ownerStoreName){
     const sql = 'delete from ShoppingList where UserEmail = ? and OwnerStoreName = ?';
     const params = [userEmail, ownerStoreName];
@@ -362,81 +453,6 @@ function deleteShoppingList(userEmail,ownerStoreName){
         }
     });
 }
-
-//-------------------- 메뉴목록에서 메뉴 클릭 후 수량 선택 후 담기 버튼 클릭 시 -------------------------------- 
-router.post('/store/addshoppingList', function(req,res){
-    const ownerStoreName = req.body.ownerStoreName;
-    const userEmail = req.body.userEmail;
-    const menuName = req.body.menuName;
-    const price = req.body.price;
-    const count = req.body.count;
-
-    var List = new Object();
-    List = {
-        'menuName' : menuName,
-        'price' : price,
-        'count' : count
-    }
-    List = JSON.stringify(List)
-    
-    const sql = 'insert into ShoppingList values (? ,?, ?)';
-    const params = [userEmail, ownerStoreName, List];
-
-    connection.query(sql, params, function(err,result){
-        let resultCode = 500;
-        let message = "Server Error";
-
-        if(err){
-            console.log(err);
-        }else{
-            console.log(`menu ${menuName} has been add to shoppingList`);
-            resultCode = 200;
-            message = "Menu Add to ShoppingList";
-        }
-        res.json({
-            'code' : resultCode,
-            'message' : message
-        });
-    });
-});
-
-//-------------------- 장바구니 버튼 클릭 시 -------------------------------- 
-router.post('/store/shoppingList', function(req,res){
-    const ownerStoreName = req.body.ownerStoreName;
-    const userEmail = req.body.userEmail;
-    
-    const sql = 
-    'select json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
-    const params = [userEmail, ownerStoreName];
-
-    connection.query(sql, params, function(err,result){
-        let resultCode = 500;
-        let message = "Server Error";
-        let resultArray = new Array();
-
-        if(err){
-            console.log(err);
-        }else if(result.length === 0) {
-            resultCode = 400;
-            message = "No Shopping List Exist" 
-        }else{
-            for (var i = 0; i < result.length; i++) {
-                var resultJson = new Object();
-                resultJson.menuName = result[i].menuName;
-                resultJson.price = result[i].price;
-                resultJson.count = result[i].count;
-                resultArray.push(resultJson)
-                console.log(`${userEmail}'s ShoppingList ${resultJson}`);
-            }
-            resultCode = 200;
-            message = "ShoppingList Load Success";
-        }
-        res.json({
-            'code' : resultCode,
-            'message' : message
-        });
-    });
-});
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;

@@ -7,8 +7,9 @@ const db_config = require('../db-config/db-config.json'); // db 설정 정보 �
 const emailsend_config = require('../db-config/emailsend-config.json');
 const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
 require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
-var emailAvailable = false;
+var emailAvailable = false; //이메일의 중복체크를 해주는 변수 
 
+/*------------------------ RESTAPI 문서의 URI와는 다른 이유  ---------------------*/
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
 //그리고 owner는 main에서 호출할 때 /owner로 써줬기 때문에 owner.js에서는 라우딩에 /owner를 안써줘도된다.
 
@@ -130,6 +131,7 @@ router.post('/login', function (req, res) {
     })
 });
 
+//로그인을 성공하면 해당 휴대폰의 device token id를 Owners db table의 OwnerDeviceToken을 업데이트 해준다.
 function ownerDeviceTokenInsertDB(ownerDeviceToken, ownerEmail){
     const sql = 'update Owners set OwnerDeviceToken = ? where OwnerEmail = ?';
     const params = [ ownerDeviceToken, ownerEmail];
@@ -167,6 +169,9 @@ router.post('/login/emailfind', function (req, res) {
             ownerEmail = result[0].OwnerEmail;
             let splitedEmail = ownerEmail.split('\@');
             let encrpytedEmail;
+
+            //실제로 이메일을 찾을 때 보안상의 문제로 다 알려주지 않기 때문에 
+            // @ 앞부분의 길이에 따라서 1,2개의 문자를 * 처리해서 표시 
             if(splitedEmail[0].length > 2){ //이메일 @앞부분이 3글자 이상인 경우 뒷부분 2개를 **로 표시
                 encrpytedEmail = splitedEmail[0].slice(0,-2) + "*" + "*" ;
             }else{ //이메일 @ 앞부분이 2글자 아래인 경우, 즉 2개이거나 1개인 경우는 뒷부분 1개만 *로 표시
@@ -256,7 +261,6 @@ function passwordMailSend(ownerEmail){
     return token;
 }
 
-
 //비밀번호 찾기에서 비밀번호 변경하는 부분
 router.post('/login/changepwd',function(req, res){
     const ownerEmail = req.body.ownerEmail;
@@ -286,7 +290,6 @@ router.post('/login/changepwd',function(req, res){
         });
     })
 });
-
 
 //무엇을 export할지를 결정하는것 
 module.exports = router;
