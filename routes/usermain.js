@@ -343,6 +343,7 @@ router.post('/store/shoppingList', function(req,res){
             message = "ShoppingList Load Success";
         }
         res.json({
+            resultArray,
             'code' : resultCode,
             'message' : message
         });
