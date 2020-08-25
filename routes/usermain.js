@@ -84,8 +84,8 @@ router.post('/info/checkpwd', function(req,res){
 //개인 정보 수정에서 회원 탈퇴 부분 (계정삭제하기 버튼 클릭시)
 router.post('/info/withdraw',function(req,res){
     const userEmail = req.body.userEmail;
-    const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
-    const trashOwnerEmail = null; //탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
+    const ownerWithdraw = true; // 회원탈퇴하면 true값으로 변경 default = 0(false)
+    const trashOwnerEmail = null; // 탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
     const sql = 
     'update Owners set IsUserDeleted = ? , UserEmail =? where UserEmail = ?';
     const params = [ownerWithdraw, trashOwnerEmail, userEmail];
@@ -193,7 +193,8 @@ router.post('/ordercheck',function(req,res){
 //sql = Menus테이블에서 Owner이메일이 QRcode의 파싱된 것과 일치하는 이메일과 일치하는 Menu들을 전부 출력 
 router.post('/qrcode/storeinfo',function(req,res){
     const qrcodeParsing = req.body.qrcodeParsing;
-    const sql = 'select O.OwnerStoreName, json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."price"\') as price from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ?';
+    const sql = 
+    'select O.OwnerStoreName, json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."price"\') as price from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ? ';
 
     connection.query(sql,qrcodeParsing, function(err,result){
         let resultCode = 500;
@@ -209,7 +210,6 @@ router.post('/qrcode/storeinfo',function(req,res){
                 var resultJson = new Object();
                 var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.ownerStoreName = result[i].OwnerStoreName;
-                //resultJson.menuName = result[i].menuName;
                 resultJson.menuName = menuName;
                 resultJson.category = result[i].category;
                 resultJson.price = result[i].price;
@@ -245,7 +245,7 @@ router.post('/store/menuSpecification', function (req, res) {
             console.log("Err occured!!! from searching menu list \"eachMenu\"!!! ERROR CONTENT : " + err);
             return;
         }else if (result.length === 0) {
-            console.log("ERROR!!! result[0] is undefined!!!");
+            console.log("ERROR!!! result[0] is undefined!!");
             return;
         }else {
             console.log("메뉴 상세보기");
@@ -257,7 +257,7 @@ router.post('/store/menuSpecification', function (req, res) {
             resultMenuSpecification.imgURL = imgURL;
             resultMenuSpecification.price = result[0].price;
             resultMenuSpecification.info = info;
-
+            
             resultCode = 200;
             message = "Successfully searched menu(eachMenu)";
             console.log(resultMenuSpecification);
