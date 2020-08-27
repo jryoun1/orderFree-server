@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { createConnection } from 'mysql';
 import { Router } from 'express';
 const router = Router();
@@ -8,9 +9,23 @@ import { user as __user, pass as _pass } from '../db-config/emailsend-config.jso
 import moment, { tz } from 'moment'; //회원가입 시 가입 날짜 시간 위한 모듈
 import 'moment-timezone'; //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
 var emailAvailable = false;
+=======
+const mysql = require('mysql');
+const express = require('express');
+const router = express.Router();
+const nodemailer = require('nodemailer'); //메일 전송을 위한 모듈
+const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
+const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
+const emailsend_config = require('../db-config/emailsend-config.json');
+const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
+require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
+var emailAvailable = false; //email 중복여부를 체크해주는 변수 
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
 
+/*------------------------ RESTAPI 문서의 URI와는 다른 이유  ---------------------*/
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
 //그리고 user는 main에서 호출할 때 /user로 써줬기 때문에 user.js에서는 라우딩에 /user를 안써줘도된다.
+
 
 //mysql과의 연동 
 const connection = createConnection({
@@ -130,7 +145,12 @@ router.post('/login', function (req, res) {
     })
 });
 
+<<<<<<< HEAD
 function userDeviceTokenInsertDB(userDeviceToken, userEmail) {
+=======
+//로그인을 성공하면 해당 휴대폰의 device token id를 Users db table의 UserDeviceToken을 업데이트 해준다.
+function userDeviceTokenInsertDB(userDeviceToken, userEmail){
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
     const sql = 'update Users set UserDeviceToken = ? where UserEmail = ?';
     const params = [userDeviceToken, userEmail];
 
@@ -142,7 +162,6 @@ function userDeviceTokenInsertDB(userDeviceToken, userEmail) {
         }
     })
 }
-
 
 //이름과 전화번호로 이메일 찾는 부분
 router.post('/login/emailfind', function (req, res) {
@@ -168,10 +187,20 @@ router.post('/login/emailfind', function (req, res) {
             userEmail = result[0].UserEmail;
             let splitedEmail = userEmail.split('\@');
             let encrpytedEmail;
+<<<<<<< HEAD
             if (splitedEmail[0].length > 2) { //이메일 @앞부분이 3글자 이상인 경우 뒷부분 2개를 **로 표시
                 encrpytedEmail = splitedEmail[0].slice(0, -2) + "*" + "*";
             } else { //이메일 @ 앞부분이 2글자 아래인 경우, 즉 2개이거나 1개인 경우는 뒷부분 1개만 *로 표시
                 encrpytedEmail = splitedEmail[0].slice(0, -1) + "*";
+=======
+
+            //실제로 이메일을 찾을 때 보안상의 문제로 다 알려주지 않기 때문에 
+            // @ 앞부분의 길이에 따라서 1,2개의 문자를 * 처리해서 표시 
+            if(splitedEmail[0].length > 2){ //이메일 @앞부분이 3글자 이상인 경우 뒷부분 2개를 **로 표시
+                encrpytedEmail = splitedEmail[0].slice(0,-2) + "*" + "*" ;
+            }else{ //이메일 @ 앞부분이 2글자 아래인 경우, 즉 2개이거나 1개인 경우는 뒷부분 1개만 *로 표시
+                encrpytedEmail = splitedEmail[0].slice(0,-1) + "*";
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
             }
             userEmail = encrpytedEmail + "@" + splitedEmail[1]; // @기준으로 분리했던부분 다시 연결해서 이메일 암호화
         }
@@ -221,8 +250,13 @@ router.post('/login/pwdfind', function (req, res) {
     })
 });
 
+<<<<<<< HEAD
 //메일 보내는 함수
 function passwordMailSend(userEmail) {
+=======
+//비밀 번호를 잃어버린 경우 해당 이메일로 비밀번호를 초기화 할 수 있는 토큰이 담긴 메일 보내는 함수
+function passwordMailSend(userEmail){
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
 
     // nodemailer Transport 생성
     const transporter = createTransport({
@@ -257,7 +291,6 @@ function passwordMailSend(userEmail) {
     return token;
 }
 
-
 //비밀번호 찾기에서 비밀번호 변경하는 부분
 router.post('/login/changepwd', function (req, res) {
     const userEmail = req.body.userEmail;
@@ -287,7 +320,6 @@ router.post('/login/changepwd', function (req, res) {
         });
     })
 });
-
 
 //무엇을 export할지를 결정하는것 
 export default router;
