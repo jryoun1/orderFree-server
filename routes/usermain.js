@@ -333,11 +333,12 @@ router.post('/store/shoppingList', function(req,res){
         }else{
             for (var i = 0; i < result.length; i++) {
                 var resultJson = new Object();
-                resultJson.menuName = result[i].menuName;
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                resultJson.menuName = menuName;
                 resultJson.price = result[i].price;
                 resultJson.count = result[i].count;
                 resultArray.push(resultJson)
-                console.log(`${userEmail}'s ShoppingList ${resultJson}`);
+                console.log(`${userEmail}'s ShoppingList`, resultJson);
             }
             resultCode = 200;
             message = "ShoppingList Load Success";
@@ -349,6 +350,37 @@ router.post('/store/shoppingList', function(req,res){
         });
     });
 });
+
+// 장바구니 목록에서 장바구니 안에 있는 메뉴를 삭제할 경우 
+// 해당 메뉴의 이름과 유저 이메일을 받아서 ShoppingList db table에서 해당 튜플을 삭제해준다.
+router.post('/store/shoppingListDelete', function(req,res){
+    const userEmail = req.body.userEmail;
+    const menuName = req.body.menuName;
+    
+    const sql = 
+    'delete from ShoppingList where UserEmail = ? and json_extract(List,\'$."menuName"\') = ?';
+    const params = [userEmail, menuName];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else{
+            for (var i = 0; i < result.length; i++) {
+                console.log(`${menuName} menu deleted from ${userEmail}'s ShoppingList`);
+            }
+            resultCode = 200;
+            message = "Menu deleted from ShoppingList";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
 
 // 장바구니 화면에서 결제 완료 눌렀을때 
 // ShoppingList db table에서 해당 user의 데이터는 사라지게 되고
