@@ -388,7 +388,7 @@ router.post('/info/withdraw',function(req,res){
 // Orders db table로 부터 OrderNum을 가져온다.
 router.post('/menu/orderedList', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
-    const sql = 'select OrderNum from Orders where OwnerEmail = ?';
+    const sql = 'select OrderNum from Orders where OwnerEmail = ? and IsCompleted = 0';
     const params = [ownerEmail];
     console.log("before query");
     console.log(ownerEmail);
@@ -430,7 +430,7 @@ router.post('/menu/orderedList', function (req, res) {
 router.post('/menu/orderedListSpecification', function (req, res) {
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    const sql = 'select OrderNum, json_extract(ShoppingList,\'$[*]."menu"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
+    const sql = 'select OrderNum, json_extract(ShoppingList,\'$[*]."menuName"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as count from Orders where OwnerEmail = ? and OrderNum = ?';
     const params = [ownerEmail, orderNum];
 
     connection.query(sql, params, function (err, result) {
@@ -484,7 +484,7 @@ router.post('/menu/orderedListSpecification', function (req, res) {
 router.post('/orderlist/complete', function(req,res){
     const ownerEmail = req.body.ownerEmail;
     const orderNum = req.body.orderNum;
-    
+    console.log(ownerEmail,orderNum);
     const sql = 'select U.UserDeviceToken from Users U LEFT OUTER JOIN Orders O ON O.UserEmail = U.UserEmail where O.OrderNum = ?';
 
     connection.query(sql, orderNum, function(err,result){
@@ -499,6 +499,7 @@ router.post('/orderlist/complete', function(req,res){
         }else{
             updateIsCompleted(orderNum,ownerEmail);
             let userDeviceToken = result[0].UserDeviceToken;
+            console.log(userDeviceToken);
             let fcmMessage = {
                 notification:{
                     title: '오더프리',

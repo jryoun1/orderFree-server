@@ -1,3 +1,5 @@
+const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
+require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
 const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
@@ -152,13 +154,16 @@ router.post('/info/orderRecord',function(req,res){
 //        Owners에서 해당 ownerEmail을 가진 Owner의 가게이름을 넘겨준다. (Orders에서 Iscompleted = 0인것만 출력)
 router.post('/ordercheck',function(req,res){
     const userEmail = req.body.userEmail;
-    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$[*]."menu"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserEmail = U.UserEmail LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0'
+    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$[*]."menuName"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserEmail = U.UserEmail LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0'
     const params = [userEmail];
 
     connection.query(sql,params,function(err,result){
         let resultCode = 500;
         let message = "Server Error";
         let resultArray = new Array();
+        let ownerStoreName = " ";
+        let orderedDate = " ";
+
         if(err){
             console.log(err);
         }else if(result.length === 0){
@@ -167,19 +172,36 @@ router.post('/ordercheck',function(req,res){
         }else{
             resultCode = 200;
             messaage = "orderCheck Load Success";
-            for (var i = 0; i < result.length; i++){
+            //menuName에 대한 부분 파싱해주는 부분 
+            var name_remove = result[0].menuName.substring(1,result[0].menuName.length-1);
+            var name_remove1 = name_remove.replace(/\"/gi,"");
+            var name_remove1 = name_remove1.replace(/ /gi,"");
+            var name_list = name_remove1.split(",");
+
+            //count에 대한 부분 파싱 해주는 부분 
+            var count_remove = result[0].menuCount.substring(1,result[0].menuCount.length-1);
+            var count_remove1 = count_remove.replace(/\"/gi,"");
+            var count_remove1 = count_remove1.replace(/ /gi,"");
+            var count_list = count_remove1.split(",");
+
+            ownerStoreName = result[0].OwnerStoreName;
+            orderedDate = result[0].OrderedDate;
+
+            for (var i = 0; i < name_list.length; i++){
                 var resultJson = new Object();
-                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
-                resultJson.ownerStoreName = result[i].OwnerStoreName;
-                resultJson.orderedDate = result[i].OrderedDate;
-                resultJson.orderNum = result[i].OrderNum;
-                resultJson.menuName = menuName;
-                resultJson.menuCount = menuCount;
+
+                resultJson.menuName = name_list[i];
+                resultJson.menuCount = parseInt(count_list[i]);
+                //resultJson.menuName = result[i].menuName;
+                //resultJson.menuCount = result[i].menuCount;
                 resultArray.push(resultJson);
+                console.log(resultJson)
             }
             console.log("User main ordercheck Load success");
         }
         res.json({
+            'ownerStoreName' : ownerStoreName,
+            'orderedDate' : orderedDate,
             resultArray,
             'code' : resultCode,
             'message' : message
@@ -389,7 +411,6 @@ router.post('/store/shoppingListDelete', function(req,res){
 router.post('/confirmOrder', function(req,res){
     const ownerStoreName = req.body.ownerStoreName;
     const userEmail = req.body.userEmail;
-    
     const sql = 
     'select O.OwnerEmail, json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
     const params = [userEmail, ownerStoreName];
@@ -398,7 +419,7 @@ router.post('/confirmOrder', function(req,res){
         let resultCode = 500;
         let message = "Server Error";
         let resultArray = new Array();
-        const ownerEmail = result[0].OwnerEmail;
+        let ownerEmail = result[0].OwnerEmail;
 
         if(err){
             console.log(err);
@@ -414,7 +435,7 @@ router.post('/confirmOrder', function(req,res){
                 resultJson.price = result[i].price
                 resultJson.count = result[i].count;
                 resultArray.push(resultJson);
-                console.log(resultJson + "from confirmOrder");
+                console.log(resultJson);
             }
             updateOrderTable(userEmail,ownerEmail,resultArray);
             sendAlaramToOwner(userEmail,ownerEmail);
@@ -431,8 +452,11 @@ router.post('/confirmOrder', function(req,res){
 
 // Orders db table에 해당 데이터를 넣어주는 함수
 function updateOrderTable(userEmail,ownerEmail,resultArray){
-    const sql = 'insert into Orders(UserEmail,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (? ,? , ?, now(), false)';
-    const params = [userEmail, ownerEmail,resultArray];
+    var result = JSON.stringify(resultArray);
+    moment.tz.setDefault("Asia/Seoul"); //한국시간으로 설정
+    let menuDate = moment().format("YYYY-MM-DD HH:mm:ss"); //format에 맞춰서 회원가입 할때 db에 저장 
+    const sql = 'insert into Orders(UserEmail,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (? ,?, ?, ?, false)';
+    const params = [userEmail, ownerEmail,result,menuDate];
 
     connection.query(sql, params, function(err,result){
         if(err){
@@ -445,9 +469,9 @@ function updateOrderTable(userEmail,ownerEmail,resultArray){
 
 // User 휴대폰으로 fcm notification 을 보내주는 함수 
 function sendAlaramToOwner(userEmail,ownerEmail){
-    const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
-    const params = [userEmail, ownerEmail];
-
+    const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where O.OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
+    const params = [ownerEmail, userEmail];
+    console.log(userEmail, ownerEmail);
     connection.query(sql, params, function(err,result){
         if(err){
             console.log(err);
@@ -461,7 +485,7 @@ function sendAlaramToOwner(userEmail,ownerEmail){
                 },
                 token : ownerDeviceToken
             };
-            admin.messaging().send(fcmMessage)
+            admin2.messaging().send(fcmMessage)
                 .then((response)=>{
                     console.log('successfully push notification',response);
                 })
