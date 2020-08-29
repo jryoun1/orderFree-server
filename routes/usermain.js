@@ -230,7 +230,109 @@ router.post('/orderlist/complete', function (req, res) {
     const sql = 'insert into Orders(UserNum,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (?,?,?,now(),false)';
     const params = [userEmail, ownerEmail, shoppingList];
 
+<<<<<<< HEAD
     connection.query(sql, params, function (err, result) {
+=======
+        if(err){
+            console.log(err);
+        }else{
+            console.log(`menu ${menuName} has been add to shoppingList`);
+            resultCode = 200;
+            message = "Menu Add to ShoppingList";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+// 메뉴 목록화면에서 장바구니 버튼을 클릭 시
+// 해당 user로 부터 ShoppingList db table에 데이터가 있다면 해당 데이터들을 불러와서 보여준다.
+router.post('/store/shoppingList', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    
+    const sql = 
+    'select json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
+    const params = [userEmail, ownerStoreName];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+        let resultArray = new Array();
+
+        if(err){
+            console.log(err);
+        }else if(result.length === 0) {
+            resultCode = 400;
+            message = "No Shopping List Exist" 
+        }else{
+            for (var i = 0; i < result.length; i++) {
+                var resultJson = new Object();
+                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
+                resultJson.menuName = menuName;
+                resultJson.price = result[i].price;
+                resultJson.count = result[i].count;
+                resultArray.push(resultJson)
+                console.log(`${userEmail}'s ShoppingList`, resultJson);
+            }
+            resultCode = 200;
+            message = "ShoppingList Load Success";
+        }
+        res.json({
+            resultArray,
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+// 장바구니 목록에서 장바구니 안에 있는 메뉴를 삭제할 경우 
+// 해당 메뉴의 이름과 유저 이메일을 받아서 ShoppingList db table에서 해당 튜플을 삭제해준다.
+router.post('/store/shoppingListDelete', function(req,res){
+    const userEmail = req.body.userEmail;
+    const menuName = req.body.menuName;
+    
+    const sql = 
+    'delete from ShoppingList where UserEmail = ? and json_extract(List,\'$."menuName"\') = ?';
+    const params = [userEmail, menuName];
+
+    connection.query(sql, params, function(err,result){
+        let resultCode = 500;
+        let message = "Server Error";
+
+        if(err){
+            console.log(err);
+        }else{
+            for (var i = 0; i < result.length; i++) {
+                console.log(`${menuName} menu deleted from ${userEmail}'s ShoppingList`);
+            }
+            resultCode = 200;
+            message = "Menu deleted from ShoppingList";
+        }
+        res.json({
+            'code' : resultCode,
+            'message' : message
+        });
+    });
+});
+
+
+// 장바구니 화면에서 결제 완료 눌렀을때 
+// ShoppingList db table에서 해당 user의 데이터는 사라지게 되고
+// Orders db table에 해당 가게 점수, userEmail, shoppingList가 들어가게 된다.
+// 또한 Ownerapp 사용자의 휴대폰으로 주문이 들어왔다는 fcm notification이 가게 된다. 
+router.post('/confirmOrder', function(req,res){
+    const ownerStoreName = req.body.ownerStoreName;
+    const userEmail = req.body.userEmail;
+    
+    const sql = 
+    'select O.OwnerEmail, json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
+    const params = [userEmail, ownerStoreName];
+
+    connection.query(sql, params, function(err,result){
+>>>>>>> 690e5ecbac9c75cad6cbc5dc2a00356df58b0fc0
         let resultCode = 500;
         let message = "Server Error";
 
