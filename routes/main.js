@@ -2,7 +2,7 @@ const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
-const admin = require("firebase-admin");
+var admin = require("firebase-admin");
 
 const multer = require('multer');
 const multerS3 = require('multer-s3');

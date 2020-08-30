@@ -3,12 +3,12 @@ require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해
 const mysql = require('mysql');
 const express = require('express');
 const router = express.Router();
-const admin2 = require("firebase-admin");
+var admin = require("firebase-admin");
 const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 
 //파일 내 설정 정보들을 보호하기 위해서 따로 파일에 만들어 놓음
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
-const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json'); //fcm notification 서비스를 위한 설정 정보
+const serviceAccount = require('../db-config/fcm-serviceAccountKey.json'); //fcm notification 서비스를 위한 설정 정보
 
 //mysql과의 연동 
 const connection = mysql.createConnection({
@@ -21,9 +21,9 @@ const connection = mysql.createConnection({
 
 //fcm 서비스를 other이란 이름으로 initialize
 //이미 ownermain에서 default로 fcm-service 에 대해서 initialize를 했기 때문에 다른 이름인 other로 init
-admin2.initializeApp({
-    credential: admin2.credential.cert(serviceAccount)
-  },"other");
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  },'other');
 
 
 /*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
@@ -485,7 +485,7 @@ function sendAlaramToOwner(userEmail,ownerEmail){
                 },
                 token : ownerDeviceToken
             };
-            admin2.messaging().send(fcmMessage)
+            admin.messaging().send(fcmMessage)
                 .then((response)=>{
                     console.log('successfully push notification',response);
                 })
