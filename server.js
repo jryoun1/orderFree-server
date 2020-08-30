@@ -23,7 +23,11 @@ const usermainRouter = require('./routes/usermain')
 
 //가게등록 시 도로명 주소찾기 웹 뷰에 띄워줄 html파일 path 설정
 const path = require("path");
+<<<<<<< HEAD
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
 app.use(json()); //본문이 json format 일 때
 app.use(urlencoded({ extended: true })); //querystring모듈 사용해서 qs해석
@@ -48,4 +52,8 @@ app.use('/main',ownermainRouter);
 app.use('/user',userRouter);
 app.use('/usermain',usermainRouter);
 
+<<<<<<< HEAD
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f

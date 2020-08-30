@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 import { createConnection } from 'mysql';
 import { Router } from 'express';
 const router = Router();
@@ -6,6 +9,7 @@ import { host as _host, user as _user, database as _database, password as _passw
 import serviceAccount from '../db-config/fcm-serviceAccountKey.json';
 import { createHash } from 'crypto'; //비밀번호 인증키 역할을 할 토큰 생성을 위한 모듈 
 import { messaging } from "firebase-admin";
+<<<<<<< HEAD
 =======
 const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
 require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
@@ -19,6 +23,8 @@ const crypto = require('crypto'); //비밀번호 인증키 역할을 할 토큰 
 const db_config = require('../db-config/db-config.json'); // db 설정 정보 모듈화
 const serviceAccount = require('../db-config/fcm-serviceAccountKeyOwner.json'); //fcm notification 서비스를 위한 설정 정보
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
 //mysql과의 연동 
 const connection = createConnection({
@@ -29,14 +35,12 @@ const connection = createConnection({
     port: _port
 });
 
-//fcm 서비스를 other이란 이름으로 initialize
-//이미 ownermain에서 default로 fcm-service 에 대해서 initialize를 했기 때문에 다른 이름인 other로 init
 admin2.initializeApp({
     credential: admin2.credential.cert(serviceAccount)
   },"other");
 
-
 /*----------------------------- 메인 화면 개인정보 관련 소스코드 -----------------------------------*/
+
 //메인화면에서 개인정보 눌렀을 경우 
 router.post('/info', function (req, res) {
     const userEmail = req.body.userEmail;
@@ -97,16 +101,22 @@ router.post('/info/checkpwd', function (req, res) {
 router.post('/info/withdraw', function (req, res) {
     const userEmail = req.body.userEmail;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
     const ownerWithdraw = true; //회원탈퇴하면 true값으로 변경 default = 0(false)
     const trashOwnerEmail = null; //탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
     const sql =
         'update Owners set IsUserDeleted = ? , UserEmail =? where UserEmail = ?';
+<<<<<<< HEAD
 =======
     const ownerWithdraw = true; // 회원탈퇴하면 true값으로 변경 default = 0(false)
     const trashOwnerEmail = null; // 탈퇴하면 email중복검사에서 해당 email을 사용할 수 있게 하기 위해 trash email id 입력
     const sql = 
     'update Owners set IsUserDeleted = ? , UserEmail =? where UserEmail = ?';
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
     const params = [ownerWithdraw, trashOwnerEmail, userEmail];
 
     connection.query(sql, params, function (err, result) {
@@ -164,22 +174,31 @@ router.post('/info/orderRecord', function (req, res) {
     });
 });
 
-/*----------------------------- 메인 화면에서 주문 확인 관련 소스 코드 ------------------------------*/
+/*----------------------------- 메인 화면에서 작동 소스코드 ----------------------------------*/
 
 //메인 화면에서 주문확인 버튼 클릭 시 (현재 qr를 찍은 매장에서 주문을 했다면, 주문확인 버튼 클릭 시 주문 내역을 보여준다.)
 //sql문 = Orders 테이블에서 해당 ownerEmail이 들어가고 userEmail로 주문이 되어있는 메뉴들의 주문날짜, 주문번호, 메뉴이름, 메뉴수량을 뽑고, 
 //        Owners에서 해당 ownerEmail을 가진 Owner의 가게이름을 넘겨준다. (Orders에서 Iscompleted = 0인것만 출력)
 router.post('/ordercheck', function (req, res) {
     const userEmail = req.body.userEmail;
+<<<<<<< HEAD
     const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$[*]."menuName"\') as menuName, json_extract(ShoppingList,\'$[*]."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserEmail = U.UserEmail LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0'
     const params = [userEmail];
+=======
+    const ownerEmail = req.body.ownerEmail;
+    const sql = 'select Owners.OwnerStoreName, O.OrderedDate, O.OrderNum, json_extract(ShoppingList,\'$."menu"\') as menuName, json_extract(ShoppingList,\'$."count"\') as menuCount from Orders O LEFT OUTER JOIN Users U ON O.UserNum = U.UserNum LEFT OUTER JOIN Owners ON O.OwnerEmail = Owners.OwnerEmail WHERE U.UserEmail = ? and O.IsCompleted = 0 and O.OwnerEmail =?'
+    const params = [userEmail, ownerEmail];
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
     connection.query(sql, params, function (err, result) {
         let resultCode = 500;
         let message = "Server Error";
         let resultArray = new Array();
+<<<<<<< HEAD
         let ownerStoreName = " ";
         let orderedDate = " ";
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
         if (err) {
             console.log(err);
@@ -237,25 +256,27 @@ router.post('/ordercheck', function (req, res) {
     });
 });
 
-/*----------------------------- 메인 화면에서 qr코드 관련 소스코드 ----------------------------------*/
-
 //메인화면에서 QR코드 스캔 버튼 누르고 qr코드 스캔시
 //sql = Menus테이블에서 Owner이메일이 QRcode의 파싱된 것과 일치하는 이메일과 일치하는 Menu들을 전부 출력 
 router.post('/qrcode/storeinfo', function (req, res) {
     const qrcodeParsing = req.body.qrcodeParsing;
-    const sql = 
-    'select O.OwnerStoreName, json_extract(Menu,\'$."menuName"\') as menuName, json_extract(Menu,\'$."category"\') as category, json_extract(Menu,\'$."price"\') as price from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ? ';
+    const sql = 'select O.OwnerStoreName ,M.Menu from Menus M LEFT OUTER JOIN QRcodes ON QRcodes.OwnerEmail = M.OwnerEmail LEFT OUTER JOIN Owners O ON O.OwnerEmail = QRcodes.OwnerEmail where QRcodes.Qrcode = ?';
 
     connection.query(sql, qrcodeParsing, function (err, result) {
         let resultCode = 500;
         let message = "Server Error";
         let resultArray = new Array();
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         if (err) {
 =======
         if(err){
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+
+        if (err) {
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
             console.log(err);
         } else if (result.length === 0) {
             resultCode = 400;
@@ -263,13 +284,9 @@ router.post('/qrcode/storeinfo', function (req, res) {
         } else {
             for (var i = 0; i < result.length; i++) {
                 var resultJson = new Object();
-                var menuName = result[i].menuName.substring(1,result[i].menuName.indexOf("\"",1));
                 resultJson.ownerStoreName = result[i].OwnerStoreName;
-                resultJson.menuName = menuName;
-                resultJson.category = result[i].category;
-                resultJson.price = result[i].price;
+                resultJson.menus = result[i].Menu;
                 resultArray.push(resultJson);
-                console.log(resultJson);
             }
             resultCode = 200;
             message = "Menu Load Success";
@@ -283,6 +300,7 @@ router.post('/qrcode/storeinfo', function (req, res) {
     });
 });
 
+<<<<<<< HEAD
 // qr코드 인식 후 받아온 메뉴 목록에서 
 // 특정 메뉴 클릭시 해당 메뉴 상세 정보 출력 
 router.post('/store/menuSpecification', function (req, res) {
@@ -462,15 +480,30 @@ router.post('/confirmOrder', function(req,res){
     const sql = 
     'select O.OwnerEmail, json_extract(List,\'$."menuName"\') as menuName, json_extract(List,\'$."price"\') as price, json_extract(List,\'$."count"\') as count from ShoppingList LEFT OUTER JOIN Owners O ON O.OwnerStoreName = ShoppingList.OwnerStoreName where UserEmail = ? and ShoppingList.OwnerStoreName =?';
     const params = [userEmail, ownerStoreName];
+=======
+
+//주문 목록확인에서 음식 준비 완료 눌렀을 때 
+router.post('/orderlist/complete', function (req, res) {
+    const ownerEmail = req.body.ownerEmail;
+    const userEmail = req.body.userEmail;
+    const shoppingList = req.body.shoppingList;
+
+    const sql = 'insert into Orders(UserNum,OwnerEmail,ShoppingList,OrderedDate,IsCompleted) values (?,?,?,now(),false)';
+    const params = [userEmail, ownerEmail, shoppingList];
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
     connection.query(sql, params, function(err,result){
         let resultCode = 500;
         let message = "Server Error";
+<<<<<<< HEAD
         let resultArray = new Array();
         let ownerEmail = result[0].OwnerEmail;
+=======
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
         if(err){
             console.log(err);
+<<<<<<< HEAD
         }else if(result.length === 0){
             resultCode = 400;
             message = "Can't order!"
@@ -489,8 +522,12 @@ router.post('/confirmOrder', function(req,res){
             sendAlaramToOwner(userEmail,ownerEmail);
             deleteShoppingList(userEmail,ownerStoreName);
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+        } else {
+            sendAlaramToOwner(userEmail, ownerEmail);
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
             resultCode = 200;
-            message = "Order Success";
+            message = "Alarm Send Success";
         }
         res.json({
             'code': resultCode,
@@ -499,6 +536,7 @@ router.post('/confirmOrder', function(req,res){
     });
 });
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 function sendAlaramToOwner(userEmail, ownerEmail) {
     const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
@@ -532,6 +570,14 @@ function sendAlaramToOwner(userEmail,ownerEmail){
     console.log(userEmail, ownerEmail);
     connection.query(sql, params, function(err,result){
         if(err){
+=======
+function sendAlaramToOwner(userEmail, ownerEmail) {
+    const sql = 'select O.OwnerDeviceToken, Orders.OrderNum from Owners O LEFT OUTER JOIN Orders ON Orders.OwnerEmail = O.OwnerEmail where OwnerEmail = ? and UserEmail = ? and Orders.IsCompleted = false';
+    const params = [userEmail, ownerEmail];
+
+    connection.query(sql, params, function (err, result) {
+        if (err) {
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
             console.log(err);
         }else{
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
@@ -562,19 +608,5 @@ function sendAlaramToOwner(userEmail,ownerEmail){
     });
 }
 
-// ShoppingList db table에서 데이터를 삭제해주는 함수 
-function deleteShoppingList(userEmail,ownerStoreName){
-    const sql = 'delete from ShoppingList where UserEmail = ? and OwnerStoreName = ?';
-    const params = [userEmail, ownerStoreName];
-
-    connection.query(sql, params, function(err,result){
-        if(err){
-            console.log(err);
-        }else{
-            console.log(`${userEmail} shoppingList delete success`);
-        }
-    });
-}
-
-//무엇을 export할지를 결정하는것 
+//무엇을 export할지를 결정하는것
 export default router;

@@ -20,7 +20,11 @@ const emailsend_config = require('../db-config/emailsend-config.json');
 const moment = require('moment'); //회원가입 시 가입 날짜 시간 위한 모듈
 require('moment-timezone'); //moment 모듈에서 한국 시간 구하기 위해 필요한 모듈
 var emailAvailable = false; //이메일의 중복체크를 해주는 변수 
+<<<<<<< HEAD
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
 
 /*------------------------ RESTAPI 문서의 URI와는 다른 이유  ---------------------*/
 //라우터로 사용하면서 app으로 썻던부분을 전부 router로 변경 e.g. app.post --> router.post
@@ -195,7 +199,11 @@ router.post('/login/emailfind', function (req, res) {
                 encrpytedEmail = splitedEmail[0].slice(0,-2) + "*" + "*" ;
             }else{ //이메일 @ 앞부분이 2글자 아래인 경우, 즉 2개이거나 1개인 경우는 뒷부분 1개만 *로 표시
                 encrpytedEmail = splitedEmail[0].slice(0,-1) + "*";
+<<<<<<< HEAD
 >>>>>>> 36e733348795b324999ecd5ee451b93aa5b91582
+=======
+>>>>>>> e8bdeca222f99f58863000e0d836a411ae5f1a5e
+>>>>>>> 9fe5e3c66b333c5d9ad345d155fc2ae00962752f
             }
             ownerEmail = encrpytedEmail + "@" + splitedEmail[1]; // @기준으로 분리했던부분 다시 연결해서 이메일 암호화
         }
