@@ -716,7 +716,7 @@ router.post('/sellstatus',function(req,res){
                 // price와 count를 곱해서 총합을 계산해주는 부분
                 var price = 0;
                 for (var j = 0; j < price_list.length; j++){
-                    price += parseInt(price_list[i]) * parseInt(count_list[i]);
+                    price += parseInt(price_list[j]) * parseInt(count_list[j]);
                 }
 
                 resultJson.orderNum = result[i].OrderNum;
