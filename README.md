@@ -61,6 +61,6 @@ html(폴더)
 
 -----
 아래의 링크는 점주용 애플리케이션과 유저용 애플리케이션의 코드 및 정보가 담겨있는 링크이다. <br>
-[점주용 애플리케이션]() <br>
-[유저용 애플리케이션]() <br>
+[점주용 애플리케이션](https://github.com/jryoun1/orderFree-owner) <br>
+[유저용 애플리케이션](https://github.com/jryoun1/orderFree-user) <br>
 
